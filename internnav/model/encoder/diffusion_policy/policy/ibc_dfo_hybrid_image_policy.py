@@ -1,34 +1,36 @@
-from typing import Dict, Tuple
+from typing import Dict
+
+import diffusion_policy.model.vision.crop_randomizer as dmvc
+import robomimic.models.base_nets as rmbn
+import robomimic.utils.obs_utils as ObsUtils
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from diffusion_policy.common.pytorch_util import dict_apply, replace_submodules
+from diffusion_policy.common.robomimic_config_util import get_robomimic_config
 from diffusion_policy.model.common.normalizer import LinearNormalizer
 from diffusion_policy.policy.base_image_policy import BaseImagePolicy
-from diffusion_policy.common.robomimic_config_util import get_robomimic_config
 from robomimic.algo import algo_factory
 from robomimic.algo.algo import PolicyAlgo
-import robomimic.utils.obs_utils as ObsUtils
-import robomimic.models.base_nets as rmbn
-import diffusion_policy.model.vision.crop_randomizer as dmvc
-from diffusion_policy.common.pytorch_util import dict_apply, replace_submodules
 
 
 class IbcDfoHybridImagePolicy(BaseImagePolicy):
-    def __init__(self,
-            shape_meta: dict,
-            horizon, 
-            n_action_steps, 
-            n_obs_steps,
-            dropout=0.1,
-            train_n_neg=128,
-            pred_n_iter=5,
-            pred_n_samples=16384,
-            kevin_inference=False,
-            andy_train=False,
-            obs_encoder_group_norm=True,
-            eval_fixed_crop=True,
-            crop_shape=(76, 76),
-        ):
+    def __init__(
+        self,
+        shape_meta: dict,
+        horizon,
+        n_action_steps,
+        n_obs_steps,
+        dropout=0.1,
+        train_n_neg=128,
+        pred_n_iter=5,
+        pred_n_samples=16384,
+        kevin_inference=False,
+        andy_train=False,
+        obs_encoder_group_norm=True,
+        eval_fixed_crop=True,
+        crop_shape=(76, 76),
+    ):
         super().__init__()
 
         # parse shape_meta
@@ -36,12 +38,7 @@ class IbcDfoHybridImagePolicy(BaseImagePolicy):
         assert len(action_shape) == 1
         action_dim = action_shape[0]
         obs_shape_meta = shape_meta['obs']
-        obs_config = {
-            'low_dim': [],
-            'rgb': [],
-            'depth': [],
-            'scan': []
-        }
+        obs_config = {'low_dim': [], 'rgb': [], 'depth': [], 'scan': []}
         obs_key_shapes = dict()
         for key, attr in obs_shape_meta.items():
             shape = attr['shape']
@@ -56,12 +53,8 @@ class IbcDfoHybridImagePolicy(BaseImagePolicy):
                 raise RuntimeError(f"Unsupported obs type: {type}")
 
         # get raw robomimic config
-        config = get_robomimic_config(
-            algo_name='bc_rnn',
-            hdf5_type='image',
-            task_name='square',
-            dataset_type='ph')
-        
+        config = get_robomimic_config(algo_name='bc_rnn', hdf5_type='image', task_name='square', dataset_type='ph')
+
         with config.unlocked():
             # set config with shape_meta
             config.observation.modalities.obs = obs_config
@@ -83,26 +76,24 @@ class IbcDfoHybridImagePolicy(BaseImagePolicy):
 
         # load model
         policy: PolicyAlgo = algo_factory(
-                algo_name=config.algo_name,
-                config=config,
-                obs_key_shapes=obs_key_shapes,
-                ac_dim=action_dim,
-                device='cpu',
-            )
+            algo_name=config.algo_name,
+            config=config,
+            obs_key_shapes=obs_key_shapes,
+            ac_dim=action_dim,
+            device='cpu',
+        )
 
         self.obs_encoder = obs_encoder = policy.nets['policy'].nets['encoder'].nets['obs']
-        
+
         if obs_encoder_group_norm:
             # replace batch norm with group norm
             replace_submodules(
                 root_module=obs_encoder,
                 predicate=lambda x: isinstance(x, nn.BatchNorm2d),
-                func=lambda x: nn.GroupNorm(
-                    num_groups=x.num_features//16, 
-                    num_channels=x.num_features)
+                func=lambda x: nn.GroupNorm(num_groups=x.num_features // 16, num_channels=x.num_features),
             )
             # obs_encoder.obs_nets['agentview_image'].nets[0].nets
-        
+
         # obs_encoder.obs_randomizers['agentview_image']
         if eval_fixed_crop:
             replace_submodules(
@@ -113,8 +104,8 @@ class IbcDfoHybridImagePolicy(BaseImagePolicy):
                     crop_height=x.crop_height,
                     crop_width=x.crop_width,
                     num_crops=x.num_crops,
-                    pos_enc=x.pos_enc
-                )
+                    pos_enc=x.pos_enc,
+                ),
             )
 
         obs_feature_dim = obs_encoder.output_shape()[0]
@@ -146,18 +137,18 @@ class IbcDfoHybridImagePolicy(BaseImagePolicy):
         self.horizon = horizon
         self.kevin_inference = kevin_inference
         self.andy_train = andy_train
-    
+
     def forward(self, obs, action):
         B, N, Ta, Da = action.shape
         B, To, Do = obs.shape
-        s = obs.reshape(B,1,-1).expand(-1,N,-1)
-        x = torch.cat([s, action.reshape(B,N,-1)], dim=-1).reshape(B*N,-1)
+        s = obs.reshape(B, 1, -1).expand(-1, N, -1)
+        x = torch.cat([s, action.reshape(B, N, -1)], dim=-1).reshape(B * N, -1)
         x = self.drop0(torch.relu(self.dense0(x)))
         x = self.drop1(torch.relu(self.dense1(x)))
         x = self.drop2(torch.relu(self.dense2(x)))
         x = self.drop3(torch.relu(self.dense3(x)))
         x = self.dense4(x)
-        x = x.reshape(B,N)
+        x = x.reshape(B, N)
         return x
 
     # ========= inference  ============
@@ -166,7 +157,7 @@ class IbcDfoHybridImagePolicy(BaseImagePolicy):
         obs_dict: must include "obs" key
         result: must include "action" key
         """
-        assert 'past_action' not in obs_dict # not implemented yet
+        assert 'past_action' not in obs_dict  # not implemented yet
         # normalize input
         nobs = self.normalizer.normalize(obs_dict)
         value = next(iter(nobs.values()))
@@ -183,22 +174,17 @@ class IbcDfoHybridImagePolicy(BaseImagePolicy):
 
         # encode obs
         # reshape B, T, ... to B*T
-        this_nobs = dict_apply(nobs, 
-            lambda x: x[:,:To,...].reshape(-1,*x.shape[2:]))
+        this_nobs = dict_apply(nobs, lambda x: x[:, :To, ...].reshape(-1, *x.shape[2:]))
         nobs_features = self.obs_encoder(this_nobs)
         # reshape back to B, To, Do
-        nobs_features = nobs_features.reshape(B,To,-1)
+        nobs_features = nobs_features.reshape(B, To, -1)
 
         # only take necessary obs
         naction_stats = self.get_naction_stats()
 
         # first sample
-        action_dist = torch.distributions.Uniform(
-            low=naction_stats['min'],
-            high=naction_stats['max']
-        )
-        samples = action_dist.sample((B, self.pred_n_samples, Ta)).to(
-            dtype=dtype)
+        action_dist = torch.distributions.Uniform(low=naction_stats['min'], high=naction_stats['max'])
+        samples = action_dist.sample((B, self.pred_n_samples, Ta)).to(dtype=dtype)
         # (B, N, Ta, Da)
 
         if self.kevin_inference:
@@ -228,7 +214,7 @@ class IbcDfoHybridImagePolicy(BaseImagePolicy):
             resample_std = torch.tensor(3e-2, device=self.device)
             for i in range(self.pred_n_iter):
                 # Forward pass.
-                logits = self.forward(nobs_features, samples) # (B, N)
+                logits = self.forward(nobs_features, samples)  # (B, N)
                 prob = torch.softmax(logits, dim=-1)
 
                 if i < (self.pred_n_iter - 1):
@@ -241,9 +227,7 @@ class IbcDfoHybridImagePolicy(BaseImagePolicy):
             acts_n = samples[torch.arange(samples.size(0)).unsqueeze(-1), idxs].squeeze(1)
 
         action = self.normalizer['action'].unnormalize(acts_n)
-        result = {
-            'action': action
-        }
+        result = {'action': action}
         return result
 
     # ========= training  ============
@@ -266,45 +250,37 @@ class IbcDfoHybridImagePolicy(BaseImagePolicy):
 
         # encode obs
         # reshape B, T, ... to B*T
-        this_nobs = dict_apply(nobs, 
-            lambda x: x[:,:To,...].reshape(-1,*x.shape[2:]))
+        this_nobs = dict_apply(nobs, lambda x: x[:, :To, ...].reshape(-1, *x.shape[2:]))
         nobs_features = self.obs_encoder(this_nobs)
         # reshape back to B, To, Do
-        nobs_features = nobs_features.reshape(B,To,-1)
+        nobs_features = nobs_features.reshape(B, To, -1)
 
         start = To - 1
         end = start + Ta
-        this_action = naction[:,start:end]
+        this_action = naction[:, start:end]
 
         # Small additive noise to true positives.
-        this_action += torch.normal(mean=0, std=1e-4,
-            size=this_action.shape,
-            dtype=this_action.dtype,
-            device=this_action.device)
+        this_action += torch.normal(
+            mean=0, std=1e-4, size=this_action.shape, dtype=this_action.dtype, device=this_action.device
+        )
 
         # Sample negatives: (B, train_n_neg, Ta, Da)
         naction_stats = self.get_naction_stats()
-        action_dist = torch.distributions.Uniform(
-            low=naction_stats['min'],
-            high=naction_stats['max']
-        )
-        samples = action_dist.sample((B, self.train_n_neg, Ta)).to(
-            dtype=this_action.dtype)
-        action_samples = torch.cat([
-            this_action.unsqueeze(1), samples], dim=1)
+        action_dist = torch.distributions.Uniform(low=naction_stats['min'], high=naction_stats['max'])
+        samples = action_dist.sample((B, self.train_n_neg, Ta)).to(dtype=this_action.dtype)
+        action_samples = torch.cat([this_action.unsqueeze(1), samples], dim=1)
         # (B, train_n_neg+1, Ta, Da)
 
         if self.andy_train:
             # Get onehot labels
-            labels = torch.zeros(action_samples.shape[:2], 
-                dtype=this_action.dtype, device=this_action.device)
-            labels[:,0] = 1
+            labels = torch.zeros(action_samples.shape[:2], dtype=this_action.dtype, device=this_action.device)
+            labels[:, 0] = 1
             logits = self.forward(nobs_features, action_samples)
             # (B, N)
             logits = torch.log_softmax(logits, dim=-1)
             loss = -torch.mean(torch.sum(logits * labels, axis=-1))
         else:
-            labels = torch.zeros((B,),dtype=torch.int64, device=this_action.device)
+            labels = torch.zeros((B,), dtype=torch.int64, device=this_action.device)
             # training
             logits = self.forward(nobs_features, action_samples)
             loss = F.cross_entropy(logits, labels)

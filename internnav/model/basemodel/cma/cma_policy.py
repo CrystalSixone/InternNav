@@ -12,6 +12,7 @@ from transformers import PretrainedConfig, PreTrainedModel
 
 try:
     import safetensors.torch
+
     _has_safetensors = True
 except ImportError:
     _has_safetensors = False
@@ -83,30 +84,24 @@ class CMANet(PreTrainedModel):
         if os.path.isdir(pretrained_model_name_or_path):
             pytorch_model_path = os.path.join(pretrained_model_name_or_path, 'pytorch_model.bin')
             safetensors_model_path = os.path.join(pretrained_model_name_or_path, 'model.safetensors')
-            
+
             if _has_safetensors and os.path.exists(safetensors_model_path):
                 try:
-                    incompatible_keys, _ = model.load_state_dict(
-                        safetensors.torch.load_file(safetensors_model_path)
-                    )
+                    incompatible_keys, _ = model.load_state_dict(safetensors.torch.load_file(safetensors_model_path))
                     print(f'Successfully loaded model from {safetensors_model_path}')
                 except Exception as e:
                     print(f'Failed to load safetensors file: {e}')
                     if os.path.exists(pytorch_model_path):
-                        incompatible_keys, _ = model.load_state_dict(
-                            torch.load(pytorch_model_path)
-                        )
+                        incompatible_keys, _ = model.load_state_dict(torch.load(pytorch_model_path))
                         print(f'Successfully loaded model from {pytorch_model_path}')
                     else:
                         raise FileNotFoundError(f'No model file found in {pretrained_model_name_or_path}')
             elif os.path.exists(pytorch_model_path):
-                incompatible_keys, _ = model.load_state_dict(
-                    torch.load(pytorch_model_path)
-                )
+                incompatible_keys, _ = model.load_state_dict(torch.load(pytorch_model_path))
                 print(f'Successfully loaded model from {pytorch_model_path}')
             else:
                 raise FileNotFoundError(f'No model file found in {pretrained_model_name_or_path}')
-                
+
             if len(incompatible_keys) > 0:
                 print(f'Incompatible keys: {incompatible_keys}')
         elif pretrained_model_name_or_path is None or len(pretrained_model_name_or_path) == 0:
@@ -134,10 +129,29 @@ class CMANet(PreTrainedModel):
             shape=(256, 256, 1),
             dtype=np.float32,
         )
-        self.model_config.instruction_encoder.final_state_only = False
+        if hasattr(self.model_config, 'instruction_encoder') and self.model_config.instruction_encoder is not None:
+            self.model_config.instruction_encoder.final_state_only = False
 
         self.use_instr_bert_encoder = False
         if self.model_config.policy_name == 'CMA_CLIP_Policy':
+            if self.model_config.text_encoder.model_name == 'clip-long':
+                self.instruction_encoder = InstructionLongCLIPEncoder(self.model_config.text_encoder)
+                self.txt_linear_512_to_256 = nn.Linear(512, 256)
+                self.instruction_encoder.output_size = 256
+            else:
+                if self.model_config.text_encoder.model_name in ['roberta']:
+                    config_name = 'roberta-base'
+                else:
+                    config_name = self.model_config.text_encoder.model_name
+                bert_config = PretrainedConfig.from_pretrained(config_name)
+                text_encoder_config = copy.deepcopy(bert_config)
+                for k, v in self.model_config.text_encoder.dict().items():
+                    setattr(text_encoder_config, k, v)
+                self.instruction_encoder = LanguageEncoder(text_encoder_config)
+            self.use_instr_bert_encoder = True
+        elif hasattr(self.model_config, 'text_encoder') and self.model_config.text_encoder is not None:
+            # Support text_encoder even when policy_name != 'CMA_CLIP_Policy'
+            # This allows regular CMA_Policy to use text_encoder without needing image_encoder config
             if self.model_config.text_encoder.model_name == 'clip-long':
                 self.instruction_encoder = InstructionLongCLIPEncoder(self.model_config.text_encoder)
                 self.txt_linear_512_to_256 = nn.Linear(512, 256)

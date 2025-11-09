@@ -1,9 +1,8 @@
-import numpy as np
 from copy import deepcopy
 
-from gym import logger
-from gym.vector.vector_env import VectorEnv
+import numpy as np
 from gym.vector.utils import concatenate, create_empty_array
+from gym.vector.vector_env import VectorEnv
 
 __all__ = ["SyncVectorEnv"]
 
@@ -41,9 +40,7 @@ class SyncVectorEnv(VectorEnv):
         )
 
         self._check_observation_spaces()
-        self.observations = create_empty_array(
-            self.single_observation_space, n=self.num_envs, fn=np.zeros
-        )
+        self.observations = create_empty_array(self.single_observation_space, n=self.num_envs, fn=np.zeros)
         self._rewards = np.zeros((self.num_envs,), dtype=np.float64)
         self._dones = np.zeros((self.num_envs,), dtype=np.bool_)
         # self._rewards = [0] * self.num_envs
@@ -66,9 +63,7 @@ class SyncVectorEnv(VectorEnv):
         for env in self.envs:
             observation = env.reset()
             observations.append(observation)
-        self.observations = concatenate(
-            observations, self.observations, self.single_observation_space
-        )
+        self.observations = concatenate(observations, self.observations, self.single_observation_space)
 
         return deepcopy(self.observations) if self.copy else self.observations
 
@@ -83,9 +78,7 @@ class SyncVectorEnv(VectorEnv):
             #     observation = env.reset()
             observations.append(observation)
             infos.append(info)
-        self.observations = concatenate(
-            observations, self.observations, self.single_observation_space
-        )
+        self.observations = concatenate(observations, self.observations, self.single_observation_space)
 
         return (
             deepcopy(self.observations) if self.copy else self.observations,
@@ -109,7 +102,7 @@ class SyncVectorEnv(VectorEnv):
             "observation spaces from all environments must be "
             "equal.".format(self.single_observation_space)
         )
-    
+
     def call(self, name, *args, **kwargs) -> tuple:
         """Calls the method with name and applies args and kwargs.
 
@@ -131,9 +124,7 @@ class SyncVectorEnv(VectorEnv):
 
         return tuple(results)
 
-    def call_each(self, name: str, 
-            args_list: list=None, 
-            kwargs_list: list=None):
+    def call_each(self, name: str, args_list: list = None, kwargs_list: list = None):
         n_envs = len(self.envs)
         if args_list is None:
             args_list = [[]] * n_envs
@@ -153,10 +144,9 @@ class SyncVectorEnv(VectorEnv):
 
         return tuple(results)
 
-
     def render(self, *args, **kwargs):
         return self.call('render', *args, **kwargs)
-    
+
     def set_attr(self, name: str, values):
         """Sets an attribute of the sub-environments.
 

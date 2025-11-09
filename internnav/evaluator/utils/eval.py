@@ -1,18 +1,19 @@
 import base64
 import pickle
 
-from internnav.evaluator.utils.common import load_scene_usd, load_kujiale_scene_usd
-from internnav.projects.dataloader.resumable import ResumablePathKeyDataloader
-from internnav.projects.internutopia_vln_extension.configs.tasks.vln_eval_task import (
-    VLNEvalTaskCfg,
-)
-from internnav.configs.evaluator import EvalCfg
-from internutopia_extension.configs.robots.h1 import H1RobotCfg
 from internutopia.core.config.robot import ControllerCfg
+from internutopia_extension.configs.robots.h1 import H1RobotCfg
+from internutopia_extension.configs.sensors import RepCameraCfg
+
+from internnav.configs.evaluator import EvalCfg
+from internnav.evaluator.utils.common import load_kujiale_scene_usd, load_scene_usd
+from internnav.projects.dataloader.resumable import ResumablePathKeyDataloader
 from internnav.projects.internutopia_vln_extension.configs.metrics.vln_pe_metrics import (
     VLNPEMetricCfg,
 )
-from internutopia_extension.configs.sensors import RepCameraCfg
+from internnav.projects.internutopia_vln_extension.configs.tasks.vln_eval_task import (
+    VLNEvalTaskCfg,
+)
 
 
 def generate_episode(dataloader: ResumablePathKeyDataloader, config: EvalCfg):
@@ -21,7 +22,7 @@ def generate_episode(dataloader: ResumablePathKeyDataloader, config: EvalCfg):
     eval_path_key_list = dataloader.resumed_path_key_list
     path_key_data = dataloader.path_key_data
     episodes = []
-    
+
     robot = H1RobotCfg(
         **config.task.robot.robot_settings,
         controllers=[ControllerCfg(**cfg.controller_settings) for cfg in config.task.robot.controllers],
@@ -52,9 +53,11 @@ def generate_episode(dataloader: ResumablePathKeyDataloader, config: EvalCfg):
                 robot_flash=robot_flash,
                 one_step_stand_still=one_step_stand_still,
                 metrics=[VLNPEMetricCfg(**config.task.metric.metric_setting['metric_config'])],
-                scene_asset_path=load_scene_func(scene_data_dir, dataloader.path_key_scan[path_key])
-                if scene_asset_path == ''
-                else scene_asset_path,
+                scene_asset_path=(
+                    load_scene_func(scene_data_dir, dataloader.path_key_scan[path_key])
+                    if scene_asset_path == ''
+                    else scene_asset_path
+                ),
                 scene_scale=scene_scale,
                 robots=[
                     robot.update(

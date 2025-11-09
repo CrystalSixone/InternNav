@@ -16,7 +16,6 @@
 
 import importlib
 import inspect
-import os
 
 from gym.envs.registration import registry as gym_registry
 
@@ -111,11 +110,13 @@ def configurable(config_id=None, pickleable=False, config_cache=global_config):
         config_cache: The ConfigCache to use to read config data from. Uses
             the global ConfigCache by default.
     """
+
     def cls_decorator(cls):
         assert inspect.isclass(cls)
 
         # Overwrite the class constructor to pass arguments from the config.
         base_init = cls.__init__
+
         def __init__(self, *args, **kwargs):
 
             config = config_cache.get_config(config_id or type(self))
@@ -123,13 +124,14 @@ def configurable(config_id=None, pickleable=False, config_cache=global_config):
             kwargs = {**config, **kwargs}
 
             # print('Initializing {} with params: {}'.format(type(self).__name__,
-                                                           # kwargs))
+            # kwargs))
 
             if pickleable:
                 self._pkl_env_args = args
                 self._pkl_env_kwargs = kwargs
 
             base_init(self, *args, **kwargs)
+
         cls.__init__ = __init__
 
         # If the class is pickleable, overwrite the state methods to save
@@ -144,6 +146,7 @@ def configurable(config_id=None, pickleable=False, config_cache=global_config):
                     PKL_ARGS_KEY: self._pkl_env_args,
                     PKL_KWARGS_KEY: self._pkl_env_kwargs,
                 }
+
             cls.__getstate__ = __getstate__
 
             def __setstate__(self, data):
@@ -157,7 +160,9 @@ def configurable(config_id=None, pickleable=False, config_cache=global_config):
 
                 inst = type(self)(*saved_args, **kwargs)
                 self.__dict__.update(inst.__dict__)
+
             cls.__setstate__ = __setstate__
 
         return cls
+
     return cls_decorator

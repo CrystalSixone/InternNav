@@ -1,7 +1,9 @@
-from internnav.projects.internutopia_vln_extension.configs.tasks.vln_eval_task import VLNEvalTaskCfg
 from internutopia.core.task import BaseTask
 
 from internnav.evaluator.utils.common import set_seed
+from internnav.projects.internutopia_vln_extension.configs.tasks.vln_eval_task import (
+    VLNEvalTaskCfg,
+)
 
 from .utils import DoneChecker
 
@@ -100,12 +102,14 @@ class VLNEvalTask(BaseTask):
         if 'pano_camera_0' in self.robot.sensors:
             camera = self.robot.sensors['pano_camera_0']
             import omni.replicator.core as rep
+
             if self.env_id == 0:
                 rep.orchestrator.step(rt_subframes=2, delta_time=0.0, pause_timeline=False)
             cur_obs = camera.get_data()
             rgb_info = cur_obs['rgba'][..., :3]
 
             import numpy as np
+
             from internnav.evaluator.utils.common import norm_depth
 
             depth_info = norm_depth(cur_obs['depth'])
@@ -146,17 +150,24 @@ class VLNEvalTask(BaseTask):
 
         # add step
         self.step_count = self.step_count + 1
-        assert action_name in ['stand_still', 'move_by_discrete', 'vln_move_by_speed', 'vln_dp_move_by_speed', 'move_by_flash', 'stop'], f"Got invalid action name {action_name}!!!"
+        assert action_name in [
+            'stand_still',
+            'move_by_discrete',
+            'vln_move_by_speed',
+            'vln_dp_move_by_speed',
+            'move_by_flash',
+            'stop',
+        ], f"Got invalid action name {action_name}!!!"
         if action_name == 'stand_still':
             if self.warm_up_step > 1:
                 self.step_count -= 1
                 self.warm_up_step -= 1
                 self.robot.current_action = None
                 return {self.robot_name: obs}
-            else:    
+            else:
                 obs.update(self.get_rgb_depth())
                 if (not self.config.robot_flash) and (not self.config.one_step_stand_still):
-                    self.warm_up_step = 50      # without this, possible issues: delay by get_rgb; break warm up
+                    self.warm_up_step = 50  # without this, possible issues: delay by get_rgb; break warm up
 
         elif action_name == 'move_by_discrete':
             move_by_discrete_obs = self.robot.controllers['move_by_discrete'].get_obs()
@@ -164,26 +175,26 @@ class VLNEvalTask(BaseTask):
                 self.robot.current_action = None
                 return {self.robot_name: obs}
             obs.update(self.get_rgb_depth())
-        
+
         elif action_name == 'vln_move_by_speed':
             move_by_speed_obs = self.robot.controllers['vln_move_by_speed'].get_obs()
             if not move_by_speed_obs['finished']:
-                return {self.robot_name:obs} # not finish
+                return {self.robot_name: obs}  # not finish
             obs.update(self.get_rgb_depth())
 
         elif action_name == 'vln_dp_move_by_speed':
             move_by_speed_obs = self.robot.controllers['vln_dp_move_by_speed'].get_obs()
             if not move_by_speed_obs['finished']:
-                return {self.robot_name:obs} # not finish
-            obs.update(self.get_rgb_depth())    
-            
+                return {self.robot_name: obs}  # not finish
+            obs.update(self.get_rgb_depth())
+
         elif action_name == 'move_by_flash':
             obs.update(self.get_rgb_depth())
-            
+
         obs['finish_action'] = True
         self.robot.current_action = None
         # update when stop
-        dones, reason = self.done_checker.execute(obs, action_name, self.step_count)  
+        dones, reason = self.done_checker.execute(obs, action_name, self.step_count)
         self._done = dones[0]
         if self._done:
             self.update_metrics({self.robot_name: obs})

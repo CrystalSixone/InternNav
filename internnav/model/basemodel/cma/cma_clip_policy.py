@@ -22,9 +22,11 @@ from internnav.model.encoder.rnn_encoder import build_rnn_state_encoder
 
 try:
     import safetensors.torch
+
     _has_safetensors = True
 except ImportError:
     _has_safetensors = False
+
 
 class CustomFixedCategorical(torch.distributions.Categorical):
     """Same as the CustomFixedCategorical in hab-lab, but renames log_probs
@@ -88,30 +90,24 @@ class CMA_CLIP_Net(PreTrainedModel):
         if os.path.isdir(pretrained_model_name_or_path):
             pytorch_model_path = os.path.join(pretrained_model_name_or_path, 'pytorch_model.bin')
             safetensors_model_path = os.path.join(pretrained_model_name_or_path, 'model.safetensors')
-            
+
             if _has_safetensors and os.path.exists(safetensors_model_path):
                 try:
-                    incompatible_keys, _ = model.load_state_dict(
-                        safetensors.torch.load_file(safetensors_model_path)
-                    )
+                    incompatible_keys, _ = model.load_state_dict(safetensors.torch.load_file(safetensors_model_path))
                     print(f'Successfully loaded model from {safetensors_model_path}')
                 except Exception as e:
                     print(f'Failed to load safetensors file: {e}')
                     if os.path.exists(pytorch_model_path):
-                        incompatible_keys, _ = model.load_state_dict(
-                            torch.load(pytorch_model_path)
-                        )
+                        incompatible_keys, _ = model.load_state_dict(torch.load(pytorch_model_path))
                         print(f'Successfully loaded model from {pytorch_model_path}')
                     else:
                         raise FileNotFoundError(f'No model file found in {pretrained_model_name_or_path}')
             elif os.path.exists(pytorch_model_path):
-                incompatible_keys, _ = model.load_state_dict(
-                    torch.load(pytorch_model_path)
-                )
+                incompatible_keys, _ = model.load_state_dict(torch.load(pytorch_model_path))
                 print(f'Successfully loaded model from {pytorch_model_path}')
             else:
                 raise FileNotFoundError(f'No model file found in {pretrained_model_name_or_path}')
-                
+
             if len(incompatible_keys) > 0:
                 print(f'Incompatible keys: {incompatible_keys}')
         elif pretrained_model_name_or_path is None or len(pretrained_model_name_or_path) == 0:
@@ -338,7 +334,10 @@ class CMA_CLIP_Net(PreTrainedModel):
 
         state_in = torch.cat([rgb_in, depth_in, prev_actions], dim=1)
         rnn_states_out = rnn_states.detach().clone()
-        (state, rnn_states_out[:, 0 : self.state_encoder.num_recurrent_layers],) = self.state_encoder(
+        (
+            state,
+            rnn_states_out[:, 0 : self.state_encoder.num_recurrent_layers],
+        ) = self.state_encoder(
             state_in,
             rnn_states[:, 0 : self.state_encoder.num_recurrent_layers],
             masks,
@@ -388,7 +387,10 @@ class CMA_CLIP_Net(PreTrainedModel):
             dim=1,
         )
         x = self.second_state_compress(x)
-        (x, rnn_states_out[:, self.state_encoder.num_recurrent_layers :],) = self.second_state_encoder(
+        (
+            x,
+            rnn_states_out[:, self.state_encoder.num_recurrent_layers :],
+        ) = self.second_state_encoder(
             x,
             rnn_states[:, self.state_encoder.num_recurrent_layers :],
             masks,

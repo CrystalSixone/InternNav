@@ -1,8 +1,8 @@
 import numpy as np
 from internutopia.core.config.robot import RobotCfg
 from internutopia.core.robot.robot import BaseRobot
-from internutopia_extension.robots.h1 import H1Robot
 from internutopia.core.scene.scene import IScene
+from internutopia_extension.robots.h1 import H1Robot
 
 
 @BaseRobot.register('VLNH1Robot')
@@ -18,6 +18,7 @@ class VLNH1Robot(H1Robot):
 
     def apply_action(self, action: dict):
         import omni.isaac.core.utils.numpy.rotations as rot_utils
+
         self.current_action = action
         ret = super().apply_action(action)
         if 'topdown_camera_500' in self.sensors:

@@ -228,9 +228,9 @@ class VlnPeEvaluator(Evaluator):
             reset_infos[reset_env_ids] = (
                 new_reset_infos if len(new_reset_infos) > 0 else None
             )  # If there is only one reset and no new_deset_infos, return an empty array
-            self.runner_status[
-                np.vectorize(lambda x: x)(reset_infos) == None  # noqa: E711
-            ] = runner_status_code.TERMINATED
+            self.runner_status[np.vectorize(lambda x: x)(reset_infos) == None] = (  # noqa: E711
+                runner_status_code.TERMINATED
+            )
             log.debug(f'env{np.vectorize(lambda x: x)(reset_infos) == None}: states switch to TERMINATED.')
             reset_infos = reset_infos.tolist()
 

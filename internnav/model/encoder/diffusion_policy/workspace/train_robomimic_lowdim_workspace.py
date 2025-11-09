@@ -1,34 +1,35 @@
 if __name__ == "__main__":
-    import sys
     import os
     import pathlib
+    import sys
 
     ROOT_DIR = str(pathlib.Path(__file__).parent.parent.parent)
     sys.path.append(ROOT_DIR)
     os.chdir(ROOT_DIR)
 
-import os
-import hydra
-import torch
-from omegaconf import OmegaConf
-import pathlib
-from torch.utils.data import DataLoader
 import copy
+import os
+import pathlib
 import random
-import wandb
-import tqdm
+
+import hydra
 import numpy as np
-import shutil
-from diffusion_policy.workspace.base_workspace import BaseWorkspace
-from diffusion_policy.policy.robomimic_lowdim_policy import RobomimicLowdimPolicy
-from diffusion_policy.dataset.base_dataset import BaseLowdimDataset
-from diffusion_policy.env_runner.base_lowdim_runner import BaseLowdimRunner
+import torch
+import tqdm
 from diffusion_policy.common.checkpoint_util import TopKCheckpointManager
 from diffusion_policy.common.json_logger import JsonLogger
-from diffusion_policy.common.pytorch_util import dict_apply, optimizer_to
+from diffusion_policy.common.pytorch_util import dict_apply
+from diffusion_policy.dataset.base_dataset import BaseLowdimDataset
+from diffusion_policy.env_runner.base_lowdim_runner import BaseLowdimRunner
+from diffusion_policy.policy.robomimic_lowdim_policy import RobomimicLowdimPolicy
+from diffusion_policy.workspace.base_workspace import BaseWorkspace
+from omegaconf import OmegaConf
+from torch.utils.data import DataLoader
 
+import wandb
 
 OmegaConf.register_new_resolver("eval", eval, replace=True)
+
 
 class TrainRobomimicLowdimWorkspace(BaseWorkspace):
     include_keys = ['global_step', 'epoch']
@@ -74,16 +75,12 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
 
         # configure env
         env_runner: BaseLowdimRunner
-        env_runner = hydra.utils.instantiate(
-            cfg.task.env_runner,
-            output_dir=self.output_dir)
+        env_runner = hydra.utils.instantiate(cfg.task.env_runner, output_dir=self.output_dir)
         assert isinstance(env_runner, BaseLowdimRunner)
 
         # configure logging
         wandb_run = wandb.init(
-            dir=str(self.output_dir),
-            config=OmegaConf.to_container(cfg, resolve=True),
-            **cfg.logging
+            dir=str(self.output_dir), config=OmegaConf.to_container(cfg, resolve=True), **cfg.logging
         )
         wandb.config.update(
             {
@@ -93,8 +90,7 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
 
         # configure checkpoint
         topk_manager = TopKCheckpointManager(
-            save_dir=os.path.join(self.output_dir, 'checkpoints'),
-            **cfg.checkpoint.topk
+            save_dir=os.path.join(self.output_dir, 'checkpoints'), **cfg.checkpoint.topk
         )
 
         # device transfer
@@ -116,32 +112,33 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
                 step_log = dict()
                 # ========= train for this epoch ==========
                 train_losses = list()
-                with tqdm.tqdm(train_dataloader, desc=f"Training epoch {self.epoch}", 
-                        leave=False, mininterval=cfg.training.tqdm_interval_sec) as tepoch:
+                with tqdm.tqdm(
+                    train_dataloader,
+                    desc=f"Training epoch {self.epoch}",
+                    leave=False,
+                    mininterval=cfg.training.tqdm_interval_sec,
+                ) as tepoch:
                     for batch_idx, batch in enumerate(tepoch):
                         # device transfer
                         batch = dict_apply(batch, lambda x: x.to(device, non_blocking=True))
                         info = self.model.train_on_batch(batch, epoch=self.epoch)
 
-                        # logging 
+                        # logging
                         loss_cpu = info['losses']['action_loss'].item()
                         tepoch.set_postfix(loss=loss_cpu, refresh=False)
                         train_losses.append(loss_cpu)
-                        step_log = {
-                            'train_loss': loss_cpu,
-                            'global_step': self.global_step,
-                            'epoch': self.epoch
-                        }
+                        step_log = {'train_loss': loss_cpu, 'global_step': self.global_step, 'epoch': self.epoch}
 
-                        is_last_batch = (batch_idx == (len(train_dataloader)-1))
+                        is_last_batch = batch_idx == (len(train_dataloader) - 1)
                         if not is_last_batch:
                             # log of last step is combined with validation and rollout
                             wandb_run.log(step_log, step=self.global_step)
                             json_logger.log(step_log)
                             self.global_step += 1
 
-                        if (cfg.training.max_train_steps is not None) \
-                            and batch_idx >= (cfg.training.max_train_steps-1):
+                        if (cfg.training.max_train_steps is not None) and batch_idx >= (
+                            cfg.training.max_train_steps - 1
+                        ):
                             break
 
                 # at the end of each epoch
@@ -162,15 +159,20 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
                 if (self.epoch % cfg.training.val_every) == 0:
                     with torch.no_grad():
                         val_losses = list()
-                        with tqdm.tqdm(val_dataloader, desc=f"Validation epoch {self.epoch}", 
-                                leave=False, mininterval=cfg.training.tqdm_interval_sec) as tepoch:
+                        with tqdm.tqdm(
+                            val_dataloader,
+                            desc=f"Validation epoch {self.epoch}",
+                            leave=False,
+                            mininterval=cfg.training.tqdm_interval_sec,
+                        ) as tepoch:
                             for batch_idx, batch in enumerate(tepoch):
                                 batch = dict_apply(batch, lambda x: x.to(device, non_blocking=True))
                                 info = self.model.train_on_batch(batch, epoch=self.epoch, validate=True)
                                 loss = info['losses']['action_loss']
                                 val_losses.append(loss)
-                                if (cfg.training.max_val_steps is not None) \
-                                    and batch_idx >= (cfg.training.max_val_steps-1):
+                                if (cfg.training.max_val_steps is not None) and batch_idx >= (
+                                    cfg.training.max_val_steps - 1
+                                ):
                                     break
                         if len(val_losses) > 0:
                             val_loss = torch.mean(torch.tensor(val_losses)).item()
@@ -190,7 +192,7 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
                     for key, value in step_log.items():
                         new_key = key.replace('/', '_')
                         metric_dict[new_key] = value
-                    
+
                     # We can't copy the last checkpoint here
                     # since save_checkpoint uses threads.
                     # therefore at this point the file might have been empty!
@@ -211,11 +213,13 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
 
 @hydra.main(
     version_base=None,
-    config_path=str(pathlib.Path(__file__).parent.parent.joinpath("config")), 
-    config_name=pathlib.Path(__file__).stem)
+    config_path=str(pathlib.Path(__file__).parent.parent.joinpath("config")),
+    config_name=pathlib.Path(__file__).stem,
+)
 def main(cfg):
     workspace = TrainRobomimicLowdimWorkspace(cfg)
     workspace.run()
+
 
 if __name__ == "__main__":
     main()

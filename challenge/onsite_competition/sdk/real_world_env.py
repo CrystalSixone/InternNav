@@ -14,7 +14,6 @@ class RealWorldEnv(Env):
         return frame
 
     def step(self, action):
-
         '''
         action (int): Discrete action to apply:
                     - 0: no movement (stand still)

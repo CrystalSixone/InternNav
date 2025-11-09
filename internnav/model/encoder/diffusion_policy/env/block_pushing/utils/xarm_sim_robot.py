@@ -14,15 +14,13 @@
 # limitations under the License.
 
 """XArm Robot Kinematics."""
+import numpy as np
+import pybullet
 from diffusion_policy.env.block_pushing.utils import utils_pybullet
 from diffusion_policy.env.block_pushing.utils.pose3d import Pose3d
-import numpy as np
 from scipy.spatial import transform
-import pybullet
 
-XARM_URDF_PATH = (
-    "third_party/bullet/examples/pybullet/gym/pybullet_data/" "xarm/xarm6_robot.urdf"
-)
+XARM_URDF_PATH = "third_party/bullet/examples/pybullet/gym/pybullet_data/" "xarm/xarm6_robot.urdf"
 SUCTION_URDF_PATH = "third_party/py/envs/assets/suction/" "suction-head-long.urdf"
 CYLINDER_URDF_PATH = "third_party/py/envs/assets/suction/" "cylinder.urdf"
 CYLINDER_REAL_URDF_PATH = "third_party/py/envs/assets/suction/" "cylinder_real.urdf"
@@ -43,9 +41,7 @@ class XArmSimRobot:
         self.initial_joint_positions = initial_joint_positions
 
         if color == "default":
-            self.xarm = utils_pybullet.load_urdf(
-                pybullet_client, XARM_URDF_PATH, [0, 0, 0]
-            )
+            self.xarm = utils_pybullet.load_urdf(pybullet_client, XARM_URDF_PATH, [0, 0, 0])
         else:
             raise ValueError("Unrecognized xarm color %s" % color)
 
@@ -59,9 +55,7 @@ class XArmSimRobot:
                 joint_indices.append(i)
                 # Note examples in pybullet do this, but it is not clear what the
                 # benefits are.
-                self._pybullet_client.changeDynamics(
-                    self.xarm, i, linearDamping=0, angularDamping=0
-                )
+                self._pybullet_client.changeDynamics(self.xarm, i, linearDamping=0, angularDamping=0)
 
         self._n_joints = len(joints)
         self._joints = tuple(joints)
@@ -71,11 +65,7 @@ class XArmSimRobot:
         self.reset_joints(self.initial_joint_positions)
         self.effector_link = 6
 
-        if (
-            end_effector == "suction"
-            or end_effector == "cylinder"
-            or end_effector == "cylinder_real"
-        ):
+        if end_effector == "suction" or end_effector == "cylinder" or end_effector == "cylinder_real":
             self.end_effector = self._setup_end_effector(end_effector)
         else:
             if end_effector != "none":
@@ -133,39 +123,29 @@ class XArmSimRobot:
           joint_values: Iterable with desired joint positions.
         """
         for i in range(self._n_joints):
-            self._pybullet_client.resetJointState(
-                self.xarm, self._joints[i], joint_values[i]
-            )
+            self._pybullet_client.resetJointState(self.xarm, self._joints[i], joint_values[i])
 
     def get_joints_measured(self):
-        joint_states = self._pybullet_client.getJointStates(
-            self.xarm, self._joint_indices
-        )
+        joint_states = self._pybullet_client.getJointStates(self.xarm, self._joint_indices)
         joint_positions = np.array([state[0] for state in joint_states])
         joint_velocities = np.array([state[1] for state in joint_states])
         joint_torques = np.array([state[3] for state in joint_states])
         return joint_positions, joint_velocities, joint_torques
 
     def get_joint_positions(self):
-        joint_states = self._pybullet_client.getJointStates(
-            self.xarm, self._joint_indices
-        )
+        joint_states = self._pybullet_client.getJointStates(self.xarm, self._joint_indices)
         joint_positions = np.array([state[0] for state in joint_states])
         return joint_positions
 
     def forward_kinematics(self):
         """Forward kinematics."""
-        effector_state = self._pybullet_client.getLinkState(
-            self.xarm, self.effector_link
-        )
+        effector_state = self._pybullet_client.getLinkState(self.xarm, self.effector_link)
         return Pose3d(
             translation=np.array(effector_state[0]),
             rotation=transform.Rotation.from_quat(effector_state[1]),
         )
 
-    def inverse_kinematics(
-        self, world_effector_pose, max_iterations=100, residual_threshold=1e-10
-    ):
+    def inverse_kinematics(self, world_effector_pose, max_iterations=100, residual_threshold=1e-10):
         """Inverse kinematics.
 
         Args:
@@ -225,6 +205,4 @@ class XArmSimRobot:
             assert object_id == self.xarm, "xarm id mismatch."
             assert link_index == i, "Link visual data was returned out of order."
             rgba_color = list(rgba_color[0:3]) + [alpha]
-            self._pybullet_client.changeVisualShape(
-                self.xarm, linkIndex=i, rgbaColor=rgba_color
-            )
+            self._pybullet_client.changeVisualShape(self.xarm, linkIndex=i, rgbaColor=rgba_color)

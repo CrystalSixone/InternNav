@@ -16,23 +16,22 @@
 """Multimodal block environments for the XArm."""
 
 import collections
+import copy
 import logging
 import math
-from typing import Dict, List, Optional, Union
-import copy
 import time
+from typing import Dict, List
 
-from gym import spaces
-from gym.envs import registration
+import numpy as np
+import pybullet
+import pybullet_utils.bullet_client as bullet_client
 from diffusion_policy.env.block_pushing import block_pushing
 from diffusion_policy.env.block_pushing.utils import utils_pybullet
 from diffusion_policy.env.block_pushing.utils.pose3d import Pose3d
-from diffusion_policy.env.block_pushing.utils.utils_pybullet import ObjState
-from diffusion_policy.env.block_pushing.utils.utils_pybullet import XarmState
-import numpy as np
+from diffusion_policy.env.block_pushing.utils.utils_pybullet import ObjState, XarmState
+from gym import spaces
+from gym.envs import registration
 from scipy.spatial import transform
-import pybullet
-import pybullet_utils.bullet_client as bullet_client
 
 # pytype: skip-file
 BLOCK2_URDF_PATH = "third_party/py/envs/assets/block2.urdf"
@@ -80,14 +79,14 @@ class BlockPushEventManager:
             'TARGET_0_0': -1,
             'TARGET_0_1': -1,
             'TARGET_1_0': -1,
-            'TARGET_1_1': -1
+            'TARGET_1_1': -1,
         }
-    
+
     def reach(self, step, block_id):
         key = f'REACH_{block_id}'
         if self.event_steps[key] < 0:
             self.event_steps[key] = step
-    
+
     def target(self, step, block_id, target_id):
         key = f'TARGET_{block_id}_{target_id}'
         if self.event_steps[key] < 0:
@@ -96,9 +95,10 @@ class BlockPushEventManager:
     def reset(self):
         for key in list(self.event_steps):
             self.event_steps[key] = -1
-    
+
     def get_info(self):
         return copy.deepcopy(self.event_steps)
+
 
 class BlockPushMultimodal(block_pushing.BlockPush):
     """2 blocks, 2 targets."""
@@ -111,7 +111,7 @@ class BlockPushMultimodal(block_pushing.BlockPush):
         shared_memory=False,
         seed=None,
         goal_dist_tolerance=0.05,
-        abs_action=False
+        abs_action=False,
     ):
         """Creates an env instance.
 
@@ -168,9 +168,7 @@ class BlockPushMultimodal(block_pushing.BlockPush):
         ]
         self._block_ids = []
         for i in [block_pushing.BLOCK_URDF_PATH, BLOCK2_URDF_PATH]:
-            self._block_ids.append(
-                utils_pybullet.load_urdf(self._pybullet_client, i, useFixedBase=False)
-            )
+            self._block_ids.append(utils_pybullet.load_urdf(self._pybullet_client, i, useFixedBase=False))
 
         # Re-enable rendering.
         pybullet.configureDebugVisualizer(pybullet.COV_ENABLE_RENDERING, 1)
@@ -183,14 +181,8 @@ class BlockPushMultimodal(block_pushing.BlockPush):
         # Helper for choosing random block position.
         def _reset_block_pose(idx, add=0.0, avoid=None):
             def _get_random_translation():
-                block_x = (
-                    workspace_center_x
-                    + add
-                    + self._rng.uniform(low=-RANDOM_X_SHIFT, high=RANDOM_X_SHIFT)
-                )
-                block_y = -0.2 + self._rng.uniform(
-                    low=-RANDOM_Y_SHIFT, high=RANDOM_Y_SHIFT
-                )
+                block_x = workspace_center_x + add + self._rng.uniform(low=-RANDOM_X_SHIFT, high=RANDOM_X_SHIFT)
+                block_y = -0.2 + self._rng.uniform(low=-RANDOM_Y_SHIFT, high=RANDOM_Y_SHIFT)
                 block_translation = np.array([block_x, block_y, 0])
                 return block_translation
 
@@ -233,15 +225,9 @@ class BlockPushMultimodal(block_pushing.BlockPush):
             def _get_random_translation():
                 # Choose x,y randomly.
                 target_x = (
-                    workspace_center_x
-                    + add
-                    + self._rng.uniform(
-                        low=-0.05 * RANDOM_X_SHIFT, high=0.05 * RANDOM_X_SHIFT
-                    )
+                    workspace_center_x + add + self._rng.uniform(low=-0.05 * RANDOM_X_SHIFT, high=0.05 * RANDOM_X_SHIFT)
                 )
-                target_y = 0.2 + self._rng.uniform(
-                    low=-0.05 * RANDOM_Y_SHIFT, high=0.05 * RANDOM_Y_SHIFT
-                )
+                target_y = 0.2 + self._rng.uniform(low=-0.05 * RANDOM_Y_SHIFT, high=0.05 * RANDOM_Y_SHIFT)
                 target_translation = np.array([target_x, target_y, 0.020])
                 return target_translation
 
@@ -255,20 +241,14 @@ class BlockPushMultimodal(block_pushing.BlockPush):
                     # print('target inner try_idx %d, dist %.3f' % (try_idx, dist))
                     if dist > MIN_TARGET_DIST:
                         break
-            target_sampled_angle = math.pi + self._rng.uniform(
-                low=-math.pi / 30, high=math.pi / 30
-            )
-            target_rotation = transform.Rotation.from_rotvec(
-                [0, 0, target_sampled_angle]
-            )
+            target_sampled_angle = math.pi + self._rng.uniform(low=-math.pi / 30, high=math.pi / 30)
+            target_rotation = transform.Rotation.from_rotvec([0, 0, target_sampled_angle])
             self._pybullet_client.resetBasePositionAndOrientation(
                 self._target_ids[idx],
                 target_translation.tolist(),
                 target_rotation.as_quat().tolist(),
             )
-            self._target_poses[idx] = Pose3d(
-                rotation=target_rotation, translation=target_translation
-            )
+            self._target_poses[idx] = Pose3d(rotation=target_rotation, translation=target_translation)
 
         if self._target_poses is None:
             self._target_poses = [None for _ in range(len(self._target_ids))]
@@ -279,10 +259,7 @@ class BlockPushMultimodal(block_pushing.BlockPush):
             # Randomly flip the location of the targets.
             _reset_target_pose(0, add=add)
             _reset_target_pose(1, add=-add, avoid=self._target_poses[0].translation)
-            dist = np.linalg.norm(
-                self._target_poses[0].translation[0]
-                - self._target_poses[1].translation[0]
-            )
+            dist = np.linalg.norm(self._target_poses[0].translation[0] - self._target_poses[1].translation[0])
             if dist > MIN_TARGET_DIST:
                 break
         else:
@@ -314,9 +291,7 @@ class BlockPushMultimodal(block_pushing.BlockPush):
             self._reset_object_poses(workspace_center_x, workspace_center_y)
 
         # else:
-        self._target_poses = [
-            self._get_target_pose(idx) for idx in self._target_ids
-        ]
+        self._target_poses = [self._get_target_pose(idx) for idx in self._target_ids]
 
         if reset_poses:
             self.step_simulation_to_stabilize()
@@ -340,24 +315,16 @@ class BlockPushMultimodal(block_pushing.BlockPush):
         xy_target = state["target_translation"]
 
         xy_block_to_target = xy_target - xy_block
-        xy_dir_block_to_target = (xy_block_to_target) / np.linalg.norm(
-            xy_block_to_target
-        )
+        xy_dir_block_to_target = (xy_block_to_target) / np.linalg.norm(xy_block_to_target)
         self.reach_target_translation = xy_block + -1 * xy_dir_block_to_target * 0.05
 
     def _compute_state(self):
         effector_pose = self._robot.forward_kinematics()
 
         def _get_block_pose(idx):
-            block_position_and_orientation = (
-                self._pybullet_client.getBasePositionAndOrientation(
-                    self._block_ids[idx]
-                )
-            )
+            block_position_and_orientation = self._pybullet_client.getBasePositionAndOrientation(self._block_ids[idx])
             block_pose = Pose3d(
-                rotation=transform.Rotation.from_quat(
-                    block_position_and_orientation[1]
-                ),
+                rotation=transform.Rotation.from_quat(block_position_and_orientation[1]),
                 translation=block_position_and_orientation[0],
             )
             return block_pose
@@ -410,7 +377,7 @@ class BlockPushMultimodal(block_pushing.BlockPush):
 
         info = self._event_manager.get_info()
         return state, reward, done, info
-    
+
     def _step_robot_and_sim(self, action):
         """Steps the robot and pybullet sim."""
         # Compute target_effector_pose by shifting the effector's pose by the
@@ -418,9 +385,9 @@ class BlockPushMultimodal(block_pushing.BlockPush):
         if self._abs_action:
             target_effector_translation = np.array([action[0], action[1], 0])
         else:
-            target_effector_translation = np.array(
-                self._target_effector_pose.translation
-            ) + np.array([action[0], action[1], 0])
+            target_effector_translation = np.array(self._target_effector_pose.translation) + np.array(
+                [action[0], action[1], 0]
+            )
 
         target_effector_translation[0:2] = np.clip(
             target_effector_translation[0:2],
@@ -443,9 +410,7 @@ class BlockPushMultimodal(block_pushing.BlockPush):
                 # includes the actual step as well as any compute that happens in the
                 # caller thread (model inference, etc).
                 compute_time = (
-                    cur_time
-                    - self._last_loop_time
-                    - self._last_loop_frame_sleep_time * self._sim_steps_per_step
+                    cur_time - self._last_loop_time - self._last_loop_frame_sleep_time * self._sim_steps_per_step
                 )
                 # Use this to calculate the current frame's total sleep time to ensure
                 # that env.step runs at policy rate. This is an estimate since the
@@ -472,9 +437,7 @@ class BlockPushMultimodal(block_pushing.BlockPush):
         targets = ["target", "target2"]
 
         def _block_target_dist(block, target):
-            return np.linalg.norm(
-                state["%s_translation" % block] - state["%s_translation" % target]
-            )
+            return np.linalg.norm(state["%s_translation" % block] - state["%s_translation" % target])
 
         def _closest_target(block):
             # Distances to all targets.
@@ -496,9 +459,7 @@ class BlockPushMultimodal(block_pushing.BlockPush):
                     dist = _block_target_dist(b, t)
                     if dist < self.goal_dist_tolerance:
                         self._in_target[t_i][b_i] = 0
-                        logger.info(
-                            f"Block {b_i} entered target {t_i} on step {self._step_num}"
-                        )
+                        logger.info(f"Block {b_i} entered target {t_i} on step {self._step_num}")
                         self._event_manager.target(step=self._step_num, block_id=b_i, target_id=t_i)
                         reward += 0.49
 
@@ -513,9 +474,7 @@ class BlockPushMultimodal(block_pushing.BlockPush):
         blocks = ["block", "block2"]
 
         def _target_block_dist(target, block):
-            return np.linalg.norm(
-                state["%s_translation" % block] - state["%s_translation" % target]
-            )
+            return np.linalg.norm(state["%s_translation" % block] - state["%s_translation" % target])
 
         def _closest_block_dist(target):
             dists = [_target_block_dist(target, b) for b in blocks]
@@ -564,9 +523,7 @@ class BlockPushMultimodal(block_pushing.BlockPush):
             ),  # theta
         )
         if image_size is not None:
-            obs_dict["rgb"] = spaces.Box(
-                low=0, high=255, shape=(image_size[0], image_size[1], 3), dtype=np.uint8
-            )
+            obs_dict["rgb"] = spaces.Box(low=0, high=255, shape=(image_size[0], image_size[1], 3), dtype=np.uint8)
         return spaces.Dict(obs_dict)
 
     def get_pybullet_state(self):
@@ -590,23 +547,17 @@ class BlockPushMultimodal(block_pushing.BlockPush):
         state["robot_end_effectors"] = []
         if self.robot.end_effector:
             state["robot_end_effectors"].append(
-                ObjState.get_bullet_state(
-                    self._pybullet_client, self.robot.end_effector
-                )
+                ObjState.get_bullet_state(self._pybullet_client, self.robot.end_effector)
             )
 
         state["targets"] = []
         if self._target_ids:
             for target_id in self._target_ids:
-                state["targets"].append(
-                    ObjState.get_bullet_state(self._pybullet_client, target_id)
-                )
+                state["targets"].append(ObjState.get_bullet_state(self._pybullet_client, target_id))
 
         state["objects"] = []
         for obj_id in self.get_obj_ids():
-            state["objects"].append(
-                ObjState.get_bullet_state(self._pybullet_client, obj_id)
-            )
+            state["objects"].append(ObjState.get_bullet_state(self._pybullet_client, obj_id))
 
         return state
 
@@ -666,14 +617,8 @@ class BlockPushHorizontalMultimodal(BlockPushMultimodal):
         # Helper for choosing random block position.
         def _reset_block_pose(idx, add=0.0, avoid=None):
             def _get_random_translation():
-                block_x = 0.35 + 0.5 * self._rng.uniform(
-                    low=-RANDOM_X_SHIFT, high=RANDOM_X_SHIFT
-                )
-                block_y = (
-                    workspace_center_y
-                    + add
-                    + 0.5 * self._rng.uniform(low=-RANDOM_Y_SHIFT, high=RANDOM_Y_SHIFT)
-                )
+                block_x = 0.35 + 0.5 * self._rng.uniform(low=-RANDOM_X_SHIFT, high=RANDOM_X_SHIFT)
+                block_y = workspace_center_y + add + 0.5 * self._rng.uniform(low=-RANDOM_Y_SHIFT, high=RANDOM_Y_SHIFT)
                 block_translation = np.array([block_x, block_y, 0])
                 return block_translation
 
@@ -716,15 +661,9 @@ class BlockPushHorizontalMultimodal(BlockPushMultimodal):
         def _reset_target_pose(idx, add=0.0, avoid=None):
             def _get_random_translation():
                 # Choose x,y randomly.
-                target_x = 0.5 + self._rng.uniform(
-                    low=-0.05 * RANDOM_X_SHIFT, high=0.05 * RANDOM_X_SHIFT
-                )
+                target_x = 0.5 + self._rng.uniform(low=-0.05 * RANDOM_X_SHIFT, high=0.05 * RANDOM_X_SHIFT)
                 target_y = (
-                    workspace_center_y
-                    + add
-                    + self._rng.uniform(
-                        low=-0.05 * RANDOM_Y_SHIFT, high=0.05 * RANDOM_Y_SHIFT
-                    )
+                    workspace_center_y + add + self._rng.uniform(low=-0.05 * RANDOM_Y_SHIFT, high=0.05 * RANDOM_Y_SHIFT)
                 )
                 target_translation = np.array([target_x, target_y, 0.020])
                 return target_translation
@@ -739,20 +678,14 @@ class BlockPushHorizontalMultimodal(BlockPushMultimodal):
                     # print('target inner try_idx %d, dist %.3f' % (try_idx, dist))
                     if dist > MIN_TARGET_DIST:
                         break
-            target_sampled_angle = math.pi + self._rng.uniform(
-                low=-math.pi / 30, high=math.pi / 30
-            )
-            target_rotation = transform.Rotation.from_rotvec(
-                [0, 0, target_sampled_angle]
-            )
+            target_sampled_angle = math.pi + self._rng.uniform(low=-math.pi / 30, high=math.pi / 30)
+            target_rotation = transform.Rotation.from_rotvec([0, 0, target_sampled_angle])
             self._pybullet_client.resetBasePositionAndOrientation(
                 self._target_ids[idx],
                 target_translation.tolist(),
                 target_rotation.as_quat().tolist(),
             )
-            self._target_poses[idx] = Pose3d(
-                rotation=target_rotation, translation=target_translation
-            )
+            self._target_poses[idx] = Pose3d(rotation=target_rotation, translation=target_translation)
 
         if self._target_poses is None:
             self._target_poses = [None for _ in range(len(self._target_ids))]
@@ -763,10 +696,7 @@ class BlockPushHorizontalMultimodal(BlockPushMultimodal):
             # Randomly flip the location of the targets.
             _reset_target_pose(0, add=add)
             _reset_target_pose(1, add=-add, avoid=self._target_poses[0].translation)
-            dist = np.linalg.norm(
-                self._target_poses[0].translation[0]
-                - self._target_poses[1].translation[0]
-            )
+            dist = np.linalg.norm(self._target_poses[0].translation[0] - self._target_poses[1].translation[0])
             break
             # if dist > MIN_TARGET_DIST:
             #     break
@@ -778,9 +708,7 @@ class BlockPushHorizontalMultimodal(BlockPushMultimodal):
 if "BlockPushMultimodal-v0" in registration.registry.env_specs:
     del registration.registry.env_specs["BlockPushMultimodal-v0"]
 
-registration.register(
-    id="BlockPushMultimodal-v0", entry_point=BlockPushMultimodal, max_episode_steps=350
-)
+registration.register(id="BlockPushMultimodal-v0", entry_point=BlockPushMultimodal, max_episode_steps=350)
 
 registration.register(
     id="BlockPushMultimodalFlipped-v0",

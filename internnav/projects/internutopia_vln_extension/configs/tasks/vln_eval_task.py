@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from internutopia.core.config.metric import MetricCfg
 from internutopia.core.config.task import TaskCfg
@@ -15,4 +15,3 @@ class VLNEvalTaskCfg(TaskCfg):
     data: Dict
     robot_flash: Optional[bool] = False
     one_step_stand_still: Optional[bool] = False
-    

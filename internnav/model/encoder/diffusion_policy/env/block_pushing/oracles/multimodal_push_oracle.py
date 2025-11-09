@@ -16,12 +16,10 @@
 """Oracle for multimodal pushing task."""
 import diffusion_policy.env.block_pushing.oracles.oriented_push_oracle as oriented_push_oracle_module
 import numpy as np
-from tf_agents.trajectories import policy_step
-from tf_agents.trajectories import time_step as ts
-from tf_agents.typing import types
 
 # Only used for debug visualization.
 import pybullet  # pylint: disable=unused-import
+from tf_agents.trajectories import policy_step
 
 
 class MultimodalOrientedPushOracle(oriented_push_oracle_module.OrientedPushOracle):
@@ -59,9 +57,7 @@ class MultimodalOrientedPushOracle(oriented_push_oracle_module.OrientedPushOracl
             self.origin = np.copy(info.xy_ee)
 
         if self.phase == "move_to_pre_block":
-            xy_delta, max_step_velocity = self._get_move_to_preblock(
-                info.xy_pre_block, info.xy_ee
-            )
+            xy_delta, max_step_velocity = self._get_move_to_preblock(info.xy_pre_block, info.xy_ee)
 
         if self.phase == "return_to_first_preblock":
             max_step_velocity = 0.3
@@ -162,14 +158,12 @@ class MultimodalOrientedPushOracle(oriented_push_oracle_module.OrientedPushOracl
 
         def _block_target_dist(block, target):
             dist = np.linalg.norm(
-                time_step.observation["%s_translation" % block]
-                - time_step.observation["%s_translation" % target]
+                time_step.observation["%s_translation" % block] - time_step.observation["%s_translation" % target]
             )
             return dist
 
         if (
-            _block_target_dist(self._first_block, self._first_target)
-            < self._goal_dist_tolerance
+            _block_target_dist(self._first_block, self._first_target) < self._goal_dist_tolerance
             and not self._has_switched
         ):
             # If first block has been pushed to first target, switch to second block.
@@ -180,8 +174,6 @@ class MultimodalOrientedPushOracle(oriented_push_oracle_module.OrientedPushOracl
             self._has_switched = True
             self.phase = "return_to_first_preblock"
 
-        xy_delta = self._get_action_for_block_target(
-            time_step, block=self._current_block, target=self._current_target
-        )
+        xy_delta = self._get_action_for_block_target(time_step, block=self._current_block, target=self._current_target)
 
         return policy_step.PolicyStep(action=np.asarray(xy_delta, dtype=np.float32))

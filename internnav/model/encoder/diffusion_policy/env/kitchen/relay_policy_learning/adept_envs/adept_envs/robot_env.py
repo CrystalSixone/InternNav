@@ -16,14 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import importlib
-import inspect
 import os
 from typing import Dict, Optional
 
 import numpy as np
-
-
 from adept_envs import mujoco_env
 from adept_envs.base_robot import BaseRobot
 from adept_envs.utils.configurable import import_class_from_path
@@ -43,11 +39,7 @@ class RobotEnv(mujoco_env.MujocoEnv):
     # This can be overridden by subclasses.
     CALIBRATION_PATHS = {}
 
-    def __init__(self,
-                 model_path: str,
-                 robot: BaseRobot,
-                 frame_skip: int,
-                 camera_settings: Optional[Dict] = None):
+    def __init__(self, model_path: str, robot: BaseRobot, frame_skip: int, camera_settings: Optional[Dict] = None):
         """Initializes a robotics environment.
 
         Args:
@@ -71,16 +63,14 @@ class RobotEnv(mujoco_env.MujocoEnv):
 
         try:
             from adept_envs.utils.remote_viz import RemoteViz
+
             self.remote_viz = RemoteViz(model_path)
         except ImportError:
-            pass          
-
+            pass
 
         self._initializing = True
-        super(RobotEnv, self).__init__(
-            model_path, frame_skip, camera_settings=camera_settings)
+        super(RobotEnv, self).__init__(model_path, frame_skip, camera_settings=camera_settings)
         self._initializing = False
-
 
     @property
     def robot(self):
@@ -107,13 +97,7 @@ class RobotEnv(mujoco_env.MujocoEnv):
         if self._robot is not None:
             self._robot.close()
 
-    def make_robot(self,
-                   n_jnt,
-                   n_obj=0,
-                   is_hardware=False,
-                   device_name=None,
-                   legacy=False,
-                   **kwargs):
+    def make_robot(self, n_jnt, n_obj=0, is_hardware=False, device_name=None, legacy=False, **kwargs):
         """Creates a new robot for the environment.
 
         Args:
@@ -136,8 +120,7 @@ class RobotEnv(mujoco_env.MujocoEnv):
 
         robot_name = 'dds_robot' if not legacy and is_hardware else 'robot'
         if robot_name not in self.ROBOTS:
-            raise KeyError("Unsupported robot '{}', available: {}".format(
-                robot_name, list(self.ROBOTS.keys())))
+            raise KeyError("Unsupported robot '{}', available: {}".format(robot_name, list(self.ROBOTS.keys())))
 
         cls = import_class_from_path(self.ROBOTS[robot_name])
 
@@ -146,21 +129,15 @@ class RobotEnv(mujoco_env.MujocoEnv):
             if not device_name:
                 calibration_name = 'default'
             elif device_name not in self.CALIBRATION_PATHS:
-                print('Device "{}" not in CALIBRATION_PATHS; using default.'
-                      .format(device_name))
+                print('Device "{}" not in CALIBRATION_PATHS; using default.'.format(device_name))
                 calibration_name = 'default'
             else:
                 calibration_name = device_name
 
             calibration_path = self.CALIBRATION_PATHS[calibration_name]
             if not os.path.isfile(calibration_path):
-                raise OSError('Could not find calibration file at: {}'.format(
-                    calibration_path))
+                raise OSError('Could not find calibration file at: {}'.format(calibration_path))
 
         return cls(
-            n_jnt,
-            n_obj,
-            is_hardware=is_hardware,
-            device_name=device_name,
-            calibration_path=calibration_path,
-            **kwargs)
+            n_jnt, n_obj, is_hardware=is_hardware, device_name=device_name, calibration_path=calibration_path, **kwargs
+        )

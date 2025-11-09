@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A simple 6DOF pose container.
-"""
+"""A simple 6DOF pose container."""
 
 import dataclasses
+
 import numpy as np
 from scipy.spatial import transform
 
@@ -62,9 +62,9 @@ class Pose3d(NoCopyAsDict):
         )
 
     def __eq__(self, other):
-        return np.array_equal(
-            self.rotation.as_quat(), other.rotation.as_quat()
-        ) and np.array_equal(self.translation, other.translation)
+        return np.array_equal(self.rotation.as_quat(), other.rotation.as_quat()) and np.array_equal(
+            self.translation, other.translation
+        )
 
     def __ne__(self, other):
         return not self.__eq__(other)

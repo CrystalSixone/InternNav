@@ -1,10 +1,10 @@
 from typing import Any, Dict, List
 
 import numpy as np
+from internutopia.core.robot.articulation import ArticulationAction
 from internutopia.core.robot.controller import BaseController
 from internutopia.core.robot.robot import BaseRobot
 from internutopia.core.scene.scene import IScene
-from internutopia.core.robot.articulation import ArticulationAction
 
 from ..configs.controllers.discrete_controller import DiscreteControllerCfg
 

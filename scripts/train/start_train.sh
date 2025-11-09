@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Default values
-NAME=rdp_train
+NAME=rdp_train_kujiale20251109
 MODEL=rdp
 
 # Parse command line arguments
@@ -28,6 +28,10 @@ case $MODEL in
         export CUDA_VISIBLE_DEVICES=0,1,2,3
         NUM_GPUS=4
         ;;
+    "rdp_vlnverse")
+        export CUDA_VISIBLE_DEVICES=0,1,2,3
+        NUM_GPUS=4
+        ;;
     "cma")
         export CUDA_VISIBLE_DEVICES=0
         NUM_GPUS=1
@@ -36,11 +40,19 @@ case $MODEL in
         export CUDA_VISIBLE_DEVICES=0
         NUM_GPUS=1
         ;;
+    "cma_clip")
+        export CUDA_VISIBLE_DEVICES=0
+        NUM_GPUS=1
+        ;;
     "seq2seq")
         export CUDA_VISIBLE_DEVICES=0
         NUM_GPUS=1
         ;;
     "seq2seq_plus")
+        export CUDA_VISIBLE_DEVICES=0
+        NUM_GPUS=1
+        ;;
+    "seq2seq_clip")
         export CUDA_VISIBLE_DEVICES=0
         NUM_GPUS=1
         ;;

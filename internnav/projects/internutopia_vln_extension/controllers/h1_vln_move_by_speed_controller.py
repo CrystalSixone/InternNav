@@ -5,14 +5,14 @@ import internutopia.core.util.math as math_utils
 import numpy as np
 import torch
 import torch.nn.functional as F
-from internutopia.core.robot.controller import BaseController
-from internutopia.core.robot.robot import BaseRobot
-from internutopia_extension.configs.controllers import H1MoveBySpeedControllerCfg
-from internutopia.core.robot.articulation_subset import ArticulationSubset
-from internutopia.core.robot.rigid_body import IRigidBody
-from internutopia.core.scene.scene import IScene
 from internutopia.core.robot.articulation import ArticulationAction
+from internutopia.core.robot.articulation_subset import ArticulationSubset
+from internutopia.core.robot.controller import BaseController
+from internutopia.core.robot.rigid_body import IRigidBody
+from internutopia.core.robot.robot import BaseRobot
+from internutopia.core.scene.scene import IScene
 from internutopia.core.sensor.sensor import BaseSensor
+from internutopia_extension.configs.controllers import H1MoveBySpeedControllerCfg
 
 from .math import quat_apply_yaw
 

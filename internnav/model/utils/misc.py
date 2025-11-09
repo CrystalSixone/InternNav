@@ -16,7 +16,8 @@ def rank0_print(*args):
             print(f"Rank {dist.get_rank()}: ", *args)
     else:
         print(*args)
-        
+
+
 def set_random_seed(seed):
     random.seed(seed)
     np.random.seed(seed)

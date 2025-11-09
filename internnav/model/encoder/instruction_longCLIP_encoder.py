@@ -32,8 +32,12 @@ class InstructionLongCLIPEncoder(nn.Module):
 
         x = (
             x
-            + (text_transformer.positional_embedding.to(x.device) * text_transformer.mask1.to(x.device)).type(data_type).to(x.device)
-            + (text_transformer.positional_embedding_res.to(x.device) * text_transformer.mask2.to(x.device)).type(data_type).to(x.device)
+            + (text_transformer.positional_embedding.to(x.device) * text_transformer.mask1.to(x.device))
+            .type(data_type)
+            .to(x.device)
+            + (text_transformer.positional_embedding_res.to(x.device) * text_transformer.mask2.to(x.device))
+            .type(data_type)
+            .to(x.device)
         )
 
         x = x.permute(1, 0, 2)  # NLD -> LND

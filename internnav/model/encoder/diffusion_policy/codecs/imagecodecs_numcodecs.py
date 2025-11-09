@@ -1,4 +1,3 @@
-
 # imagecodecs/numcodecs.py
 
 # Copyright (c) 2021-2022, Christoph Gohlke
@@ -36,11 +35,10 @@ __version__ = '2022.9.26'
 
 __all__ = ('register_codecs',)
 
+import imagecodecs
 import numpy
 from numcodecs.abc import Codec
-from numcodecs.registry import register_codec, get_codec
-
-import imagecodecs
+from numcodecs.registry import get_codec, register_codec
 
 
 def protective_squeeze(x: numpy.ndarray):
@@ -55,6 +53,7 @@ def protective_squeeze(x: numpy.ndarray):
             img_shape = (-1,) + img_shape
     return x.reshape(img_shape)
 
+
 def get_default_image_compressor(**kwargs):
     if imagecodecs.JPEGXL:
         # has JPEGXL
@@ -63,25 +62,22 @@ def get_default_image_compressor(**kwargs):
             'distance': 0.3,
             # bug in libjxl, invalid codestream for non-lossless
             # when decoding speed > 1
-            'decodingspeed': 1
+            'decodingspeed': 1,
         }
         this_kwargs.update(kwargs)
         return JpegXl(**this_kwargs)
     else:
-        this_kwargs = {
-            'level': 50
-        }
+        this_kwargs = {'level': 50}
         this_kwargs.update(kwargs)
         return Jpeg2k(**this_kwargs)
+
 
 class Aec(Codec):
     """AEC codec for numcodecs."""
 
     codec_id = 'imagecodecs_aec'
 
-    def __init__(
-        self, bitspersample=None, flags=None, blocksize=None, rsi=None
-    ):
+    def __init__(self, bitspersample=None, flags=None, blocksize=None, rsi=None):
         self.bitspersample = bitspersample
         self.flags = flags
         self.blocksize = blocksize
@@ -166,9 +162,7 @@ class Avif(Codec):
         )
 
     def decode(self, buf, out=None):
-        return imagecodecs.avif_decode(
-            buf, index=self.index, numthreads=self.numthreads, out=out
-        )
+        return imagecodecs.avif_decode(buf, index=self.index, numthreads=self.numthreads, out=out)
 
 
 class Bitorder(Codec):
@@ -193,9 +187,7 @@ class Bitshuffle(Codec):
         self.blocksize = blocksize
 
     def encode(self, buf):
-        return imagecodecs.bitshuffle_encode(
-            buf, itemsize=self.itemsize, blocksize=self.blocksize
-        ).tobytes()
+        return imagecodecs.bitshuffle_encode(buf, itemsize=self.itemsize, blocksize=self.blocksize).tobytes()
 
     def decode(self, buf, out=None):
         return imagecodecs.bitshuffle_decode(
@@ -240,9 +232,7 @@ class Blosc(Codec):
         )
 
     def decode(self, buf, out=None):
-        return imagecodecs.blosc_decode(
-            buf, numthreads=self.numthreads, out=_flat(out)
-        )
+        return imagecodecs.blosc_decode(buf, numthreads=self.numthreads, out=_flat(out))
 
 
 class Blosc2(Codec):
@@ -279,9 +269,7 @@ class Blosc2(Codec):
         )
 
     def decode(self, buf, out=None):
-        return imagecodecs.blosc2_decode(
-            buf, numthreads=self.numthreads, out=_flat(out)
-        )
+        return imagecodecs.blosc2_decode(buf, numthreads=self.numthreads, out=_flat(out))
 
 
 class Brotli(Codec):
@@ -295,9 +283,7 @@ class Brotli(Codec):
         self.lgwin = lgwin
 
     def encode(self, buf):
-        return imagecodecs.brotli_encode(
-            buf, level=self.level, mode=self.mode, lgwin=self.lgwin
-        )
+        return imagecodecs.brotli_encode(buf, level=self.level, mode=self.mode, lgwin=self.lgwin)
 
     def decode(self, buf, out=None):
         return imagecodecs.brotli_decode(buf, out=_flat(out))
@@ -308,9 +294,7 @@ class ByteShuffle(Codec):
 
     codec_id = 'imagecodecs_byteshuffle'
 
-    def __init__(
-        self, shape, dtype, axis=-1, dist=1, delta=False, reorder=False
-    ):
+    def __init__(self, shape, dtype, axis=-1, dist=1, delta=False, reorder=False):
         self.shape = tuple(shape)
         self.dtype = numpy.dtype(dtype).str
         self.axis = axis
@@ -407,16 +391,12 @@ class Delta(Codec):
             buf = protective_squeeze(numpy.asarray(buf))
             assert buf.shape == self.shape
             assert buf.dtype == self.dtype
-        return imagecodecs.delta_encode(
-            buf, axis=self.axis, dist=self.dist
-        ).tobytes()
+        return imagecodecs.delta_encode(buf, axis=self.axis, dist=self.dist).tobytes()
 
     def decode(self, buf, out=None):
         if self.shape is not None or self.dtype is not None:
             buf = numpy.frombuffer(buf, dtype=self.dtype).reshape(*self.shape)
-        return imagecodecs.delta_decode(
-            buf, axis=self.axis, dist=self.dist, out=out
-        )
+        return imagecodecs.delta_decode(buf, axis=self.axis, dist=self.dist, out=out)
 
 
 class Float24(Codec):
@@ -430,14 +410,10 @@ class Float24(Codec):
 
     def encode(self, buf):
         buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.float24_encode(
-            buf, byteorder=self.byteorder, rounding=self.rounding
-        )
+        return imagecodecs.float24_encode(buf, byteorder=self.byteorder, rounding=self.rounding)
 
     def decode(self, buf, out=None):
-        return imagecodecs.float24_decode(
-            buf, byteorder=self.byteorder, out=out
-        )
+        return imagecodecs.float24_decode(buf, byteorder=self.byteorder, out=out)
 
 
 class FloatPred(Codec):
@@ -455,16 +431,12 @@ class FloatPred(Codec):
         buf = protective_squeeze(numpy.asarray(buf))
         assert buf.shape == self.shape
         assert buf.dtype == self.dtype
-        return imagecodecs.floatpred_encode(
-            buf, axis=self.axis, dist=self.dist
-        ).tobytes()
+        return imagecodecs.floatpred_encode(buf, axis=self.axis, dist=self.dist).tobytes()
 
     def decode(self, buf, out=None):
         if not isinstance(buf, numpy.ndarray):
             buf = numpy.frombuffer(buf, dtype=self.dtype).reshape(*self.shape)
-        return imagecodecs.floatpred_decode(
-            buf, axis=self.axis, dist=self.dist, out=out
-        )
+        return imagecodecs.floatpred_decode(buf, axis=self.axis, dist=self.dist, out=out)
 
 
 class Gif(Codec):
@@ -541,9 +513,7 @@ class Jetraw(Codec):
         imagecodecs.jetraw_init(parameters, verbosity)
 
     def encode(self, buf):
-        return imagecodecs.jetraw_encode(
-            buf, identifier=self.identifier, errorbound=self.errorbound
-        )
+        return imagecodecs.jetraw_encode(buf, identifier=self.identifier, errorbound=self.errorbound)
 
     def decode(self, buf, out=None):
         if out is None:
@@ -676,9 +646,7 @@ class Jpeg2k(Codec):
         )
 
     def decode(self, buf, out=None):
-        return imagecodecs.jpeg2k_decode(
-            buf, verbose=self.verbose, numthreads=self.numthreads, out=out
-        )
+        return imagecodecs.jpeg2k_decode(buf, verbose=self.verbose, numthreads=self.numthreads, out=out)
 
 
 class JpegLs(Codec):
@@ -725,21 +693,21 @@ class JpegXl(Codec):
 
         Currently L, LA, RGB, RGBA images are supported in contig mode.
         Extra channels are only supported for grayscale images in planar mode.
-        
+
         Parameters
         ----------
         level : Default to None, i.e. not overwriting lossess and decodingspeed options.
             When < 0: Use lossless compression
-            When in [0,1,2,3,4]: Sets the decoding speed tier for the provided options. 
-                Minimum is 0 (slowest to decode, best quality/density), and maximum 
+            When in [0,1,2,3,4]: Sets the decoding speed tier for the provided options.
+                Minimum is 0 (slowest to decode, best quality/density), and maximum
                 is 4 (fastest to decode, at the cost of some quality/density).
         effort : Default to 3.
-            Sets encoder effort/speed level without affecting decoding speed. 
-            Valid values are, from faster to slower speed: 1:lightning 2:thunder 
-                3:falcon 4:cheetah 5:hare 6:wombat 7:squirrel 8:kitten 9:tortoise. 
-            Speed: lightning, thunder, falcon, cheetah, hare, wombat, squirrel, kitten, tortoise 
-            control the encoder effort in ascending order. 
-            This also affects memory usage: using lower effort will typically reduce memory 
+            Sets encoder effort/speed level without affecting decoding speed.
+            Valid values are, from faster to slower speed: 1:lightning 2:thunder
+                3:falcon 4:cheetah 5:hare 6:wombat 7:squirrel 8:kitten 9:tortoise.
+            Speed: lightning, thunder, falcon, cheetah, hare, wombat, squirrel, kitten, tortoise
+            control the encoder effort in ascending order.
+            This also affects memory usage: using lower effort will typically reduce memory
             consumption during encoding.
             lightning and thunder are fast modes useful for lossless mode (modular).
             falcon disables all of the following tools.
@@ -750,56 +718,56 @@ class JpegXl(Codec):
             kitten optimizes the adaptive quantization for a psychovisual metric.
             tortoise enables a more thorough adaptive quantization search.
         distance : Default to 1.0
-            Sets the distance level for lossy compression: target max butteraugli distance, 
-            lower = higher quality. Range: 0 .. 15. 0.0 = mathematically lossless 
-            (however, use JxlEncoderSetFrameLossless instead to use true lossless, 
-            as setting distance to 0 alone is not the only requirement). 
+            Sets the distance level for lossy compression: target max butteraugli distance,
+            lower = higher quality. Range: 0 .. 15. 0.0 = mathematically lossless
+            (however, use JxlEncoderSetFrameLossless instead to use true lossless,
+            as setting distance to 0 alone is not the only requirement).
             1.0 = visually lossless. Recommended range: 0.5 .. 3.0.
-        lossess : Default to False. 
+        lossess : Default to False.
             Use lossess encoding.
         decodingspeed : Default to 0.
             Duplicate to level. [0,4]
-        photometric : Return JxlColorSpace value. 
+        photometric : Return JxlColorSpace value.
             Default logic is quite complicated but works most of the time.
             Accepted value:
                 int: [-1,3]
-                str: ['RGB', 
-                    'WHITEISZERO', 'MINISWHITE', 
+                str: ['RGB',
+                    'WHITEISZERO', 'MINISWHITE',
                     'BLACKISZERO', 'MINISBLACK', 'GRAY',
                     'XYB', 'KNOWN']
         planar : Enable multi-channel mode.
             Default to false.
-        usecontainer : 
-            Forces the encoder to use the box-based container format (BMFF) 
+        usecontainer :
+            Forces the encoder to use the box-based container format (BMFF)
             even when not necessary.
-            When using JxlEncoderUseBoxes, JxlEncoderStoreJPEGMetadata or 
-            JxlEncoderSetCodestreamLevel with level 10, the encoder will 
-            automatically also use the container format, it is not necessary 
+            When using JxlEncoderUseBoxes, JxlEncoderStoreJPEGMetadata or
+            JxlEncoderSetCodestreamLevel with level 10, the encoder will
+            automatically also use the container format, it is not necessary
             to use JxlEncoderUseContainer for those use cases.
             By default this setting is disabled.
         index : Selectively decode frames for animation.
             Default to 0, decode all frames.
             When set to > 0, decode that frame index only.
-        keeporientation : 
-            Enables or disables preserving of as-in-bitstream pixeldata orientation. 
-            Some images are encoded with an Orientation tag indicating that the 
+        keeporientation :
+            Enables or disables preserving of as-in-bitstream pixeldata orientation.
+            Some images are encoded with an Orientation tag indicating that the
             decoder must perform a rotation and/or mirroring to the encoded image data.
 
-            If skip_reorientation is JXL_FALSE (the default): the decoder will apply 
-            the transformation from the orientation setting, hence rendering the image 
-            according to its specified intent. When producing a JxlBasicInfo, the decoder 
-            will always set the orientation field to JXL_ORIENT_IDENTITY (matching the 
-            returned pixel data) and also align xsize and ysize so that they correspond 
+            If skip_reorientation is JXL_FALSE (the default): the decoder will apply
+            the transformation from the orientation setting, hence rendering the image
+            according to its specified intent. When producing a JxlBasicInfo, the decoder
+            will always set the orientation field to JXL_ORIENT_IDENTITY (matching the
+            returned pixel data) and also align xsize and ysize so that they correspond
             to the width and the height of the returned pixel data.
 
-            If skip_reorientation is JXL_TRUE: the decoder will skip applying the 
-            transformation from the orientation setting, returning the image in 
-            the as-in-bitstream pixeldata orientation. This may be faster to decode 
-            since the decoder doesnt have to apply the transformation, but can 
-            cause wrong display of the image if the orientation tag is not correctly 
+            If skip_reorientation is JXL_TRUE: the decoder will skip applying the
+            transformation from the orientation setting, returning the image in
+            the as-in-bitstream pixeldata orientation. This may be faster to decode
+            since the decoder doesnt have to apply the transformation, but can
+            cause wrong display of the image if the orientation tag is not correctly
             taken into account by the user.
 
-            By default, this option is disabled, and the returned pixel data is 
+            By default, this option is disabled, and the returned pixel data is
             re-oriented according to the images Orientation setting.
         threads : Default to 1.
             If <= 0, use all cores.
@@ -929,9 +897,7 @@ class Lz4(Codec):
         self.header = bool(header)
 
     def encode(self, buf):
-        return imagecodecs.lz4_encode(
-            buf, level=self.level, hc=self.hc, header=self.header
-        )
+        return imagecodecs.lz4_encode(buf, level=self.level, hc=self.hc, header=self.header)
 
     def decode(self, buf, out=None):
         return imagecodecs.lz4_decode(buf, header=self.header, out=_flat(out))
@@ -1036,9 +1002,7 @@ class Pglz(Codec):
         self.strategy = strategy
 
     def encode(self, buf):
-        return imagecodecs.pglz_encode(
-            buf, strategy=self.strategy, header=self.header
-        )
+        return imagecodecs.pglz_encode(buf, strategy=self.strategy, header=self.header)
 
     def decode(self, buf, out=None):
         return imagecodecs.pglz_decode(buf, header=self.header, out=_flat(out))
@@ -1097,9 +1061,7 @@ class Rgbe(Codec):
     def decode(self, buf, out=None):
         if out is None and not self.header:
             out = numpy.empty(self.shape, numpy.float32)
-        return imagecodecs.rgbe_decode(
-            buf, header=self.header, rle=self.rle, out=out
-        )
+        return imagecodecs.rgbe_decode(buf, header=self.header, rle=self.rle, out=out)
 
 
 class Rcomp(Codec):
@@ -1191,9 +1153,7 @@ class Webp(Codec):
 
     def encode(self, buf):
         buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.webp_encode(
-            buf, level=self.level, lossless=self.lossless, method=self.method
-        )
+        return imagecodecs.webp_encode(buf, level=self.level, lossless=self.lossless, method=self.method)
 
     def decode(self, buf, out=None):
         return imagecodecs.webp_decode(buf, hasalpha=self.hasalpha, out=out)
@@ -1370,9 +1330,7 @@ def register_codecs(codecs=None, force=False, verbose=True):
         else:
             if not force:
                 if verbose:
-                    log_warning(
-                        f'numcodec {cls.codec_id!r} already registered'
-                    )
+                    log_warning(f'numcodec {cls.codec_id!r} already registered')
                 continue
             if verbose:
                 log_warning(f'replacing registered numcodec {cls.codec_id!r}')

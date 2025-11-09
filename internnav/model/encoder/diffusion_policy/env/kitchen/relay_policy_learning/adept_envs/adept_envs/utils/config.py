@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import numpy as np
+
 try:
     import cElementTree as ET
 except ImportError:
@@ -71,8 +72,7 @@ def get_config_root_node(config_file_name=None, config_file_data=None):
 
 # Read config from config_file
 def read_config_from_xml(config_file_name, parent_name, child_name, dtype=int):
-    root_node, root_name = get_config_root_node(
-        config_file_name=config_file_name)
+    root_node, root_name = get_config_root_node(config_file_name=config_file_name)
     return read_config_from_node(root_node, parent_name, child_name, dtype)
 
 
@@ -83,17 +83,13 @@ if __name__ == '__main__':
     print("Root:name \t", root_name)
     print("limit:low \t", read_config_from_node(root, "limits", "low", float))
     print("limit:high \t", read_config_from_node(root, "limits", "high", float))
-    print("scale:joint \t", read_config_from_node(root, "scale", "joint",
-                                                  float))
+    print("scale:joint \t", read_config_from_node(root, "scale", "joint", float))
     print("data:type \t", read_config_from_node(root, "data", "type", str))
 
     # read straight from xml (dumb the XML data as duh.xml for this test)
     root, root_name = get_config_root_node(config_file_name="duh.xml")
     print("Read from xml --------------------------------")
-    print("limit:low \t", read_config_from_xml("duh.xml", "limits", "low",
-                                               float))
-    print("limit:high \t",
-          read_config_from_xml("duh.xml", "limits", "high", float))
-    print("scale:joint \t",
-          read_config_from_xml("duh.xml", "scale", "joint", float))
+    print("limit:low \t", read_config_from_xml("duh.xml", "limits", "low", float))
+    print("limit:high \t", read_config_from_xml("duh.xml", "limits", "high", float))
+    print("scale:joint \t", read_config_from_xml("duh.xml", "scale", "joint", float))
     print("data:type \t", read_config_from_xml("duh.xml", "data", "type", str))

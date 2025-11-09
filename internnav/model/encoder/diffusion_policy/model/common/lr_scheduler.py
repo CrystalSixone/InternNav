@@ -1,14 +1,18 @@
 from diffusers.optimization import (
-    Union, SchedulerType, Optional,
-    Optimizer, TYPE_TO_SCHEDULER_FUNCTION
+    TYPE_TO_SCHEDULER_FUNCTION,
+    Optimizer,
+    Optional,
+    SchedulerType,
+    Union,
 )
+
 
 def get_scheduler(
     name: Union[str, SchedulerType],
     optimizer: Optimizer,
     num_warmup_steps: Optional[int] = None,
     num_training_steps: Optional[int] = None,
-    **kwargs
+    **kwargs,
 ):
     """
     Added kwargs vs diffuser's original implementation

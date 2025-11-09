@@ -1,24 +1,26 @@
 if __name__ == "__main__":
-    import sys
-    import os
     import pathlib
+    import sys
 
     ROOT_DIR = str(pathlib.Path(__file__).parent.parent.parent)
     sys.path.append(ROOT_DIR)
 
 
-import os
-import click
 import pathlib
+
+import click
 import numpy as np
-from tqdm import tqdm
 from diffusion_policy.common.replay_buffer import ReplayBuffer
-from tf_agents.environments.wrappers import TimeLimit
+from diffusion_policy.env.block_pushing.block_pushing_multimodal import (
+    BlockPushMultimodal,
+)
+from diffusion_policy.env.block_pushing.oracles.multimodal_push_oracle import (
+    MultimodalOrientedPushOracle,
+)
 from tf_agents.environments.gym_wrapper import GymWrapper
-from tf_agents.trajectories.time_step import StepType
-from diffusion_policy.env.block_pushing.block_pushing_multimodal import BlockPushMultimodal
-from diffusion_policy.env.block_pushing.block_pushing import BlockPush
-from diffusion_policy.env.block_pushing.oracles.multimodal_push_oracle import MultimodalOrientedPushOracle
+from tf_agents.environments.wrappers import TimeLimit
+from tqdm import tqdm
+
 
 @click.command()
 @click.option('-o', '--output', required=True)
@@ -52,13 +54,11 @@ def main(output, n_episodes, chunk_length):
         obs_history = np.array(obs_history)
         action_history = np.array(action_history)
 
-        episode = {
-            'obs': obs_history,
-            'action': action_history
-        }
+        episode = {'obs': obs_history, 'action': action_history}
         buffer.add_episode(episode)
-    
+
     buffer.save_to_path(output, chunk_length=chunk_length)
-        
+
+
 if __name__ == '__main__':
     main()

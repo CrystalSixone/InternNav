@@ -322,8 +322,7 @@ fall_path_z_0_3 = [
     2306,
 ]
 
-skip_list = [
-]
+skip_list = []
 
 fall_path_custom = {
     6558: [-1, 0, 0],

@@ -1,11 +1,13 @@
 from typing import Dict
 
+import numpy as np
 from internutopia.core.robot.robot import BaseRobot
 from internutopia.core.scene.scene import IScene
 from internutopia.core.sensor.camera import ICamera
 from internutopia.core.sensor.sensor import BaseSensor
-import numpy as np
+
 from internnav.utils.common_log_util import common_logger as log
+
 from ..configs.sensors.vln_camera import VLNCameraCfg
 
 
@@ -24,11 +26,15 @@ class VLNCamera(BaseSensor):
         output_data = {}
         output_data['rgba'] = self._camera.get_rgba()
         if output_data['rgba'].shape[0] != self.config.resolution[1]:
-            output_data['rgba'] = np.random.randint(0, 256, (self.config.resolution[1], self.config.resolution[0], 4), dtype=np.uint8)
+            output_data['rgba'] = np.random.randint(
+                0, 256, (self.config.resolution[1], self.config.resolution[0], 4), dtype=np.uint8
+            )
             log.error("rgba shape wrong, use random one!!!")
         output_data['depth'] = self._camera.get_distance_to_image_plane()
         if output_data['depth'].shape[0] != self.config.resolution[1]:
-            output_data['depth'] = np.random.uniform(0, 256, size=(self.config.resolution[1], self.config.resolution[0])).astype(np.float32)
+            output_data['depth'] = np.random.uniform(
+                0, 256, size=(self.config.resolution[1], self.config.resolution[0])
+            ).astype(np.float32)
             log.error("depth shape wrong, use random one!!!")
         return self._make_ordered(output_data)
 

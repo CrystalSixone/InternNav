@@ -14,27 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import click
 import glob
 import pickle
-import numpy as np
-from parse_mjl import parse_mjl_logs, viz_parsed_mjl_logs
-from mjrl.utils.gym_env import GymEnv
-import adept_envs
 import time as timer
-import skvideo.io
+
+import click
 import gym
+import numpy as np
+import skvideo.io
+from parse_mjl import parse_mjl_logs, viz_parsed_mjl_logs
 
 # headless renderer
 render_buffer = []  # rendering buffer
 
 
-def viewer(env,
-           mode='initialize',
-           filename='video',
-           frame_size=(640, 480),
-           camera_id=0,
-           render=None):
+def viewer(env, mode='initialize', filename='video', frame_size=(640, 480), camera_id=0, render=None):
     if render == 'onscreen':
         env.mj_render()
 
@@ -63,8 +57,7 @@ def viewer(env,
 # view demos (physics ignored)
 def render_demos(env, data, filename='demo_rendering.mp4', render=None):
     FPS = 30
-    render_skip = max(1, round(1. / \
-        (FPS * env.sim.model.opt.timestep * env.frame_skip)))
+    render_skip = max(1, round(1.0 / (FPS * env.sim.model.opt.timestep * env.frame_skip)))
     t0 = timer.time()
 
     viewer(env, mode='initialize', render=render)
@@ -84,8 +77,7 @@ def render_demos(env, data, filename='demo_rendering.mp4', render=None):
 def gather_training_data(env, data, filename='demo_playback.mp4', render=None):
     env = env.env
     FPS = 30
-    render_skip = max(1, round(1. / \
-        (FPS * env.sim.model.opt.timestep * env.frame_skip)))
+    render_skip = max(1, round(1.0 / (FPS * env.sim.model.opt.timestep * env.frame_skip)))
     t0 = timer.time()
 
     # initialize
@@ -116,7 +108,7 @@ def gather_training_data(env, data, filename='demo_playback.mp4', render=None):
 
         # Construct the action
         # ctrl = (data['qpos'][i_frame + 1][:9] - obs[:9]) / (env.skip * env.model.opt.timestep)
-        ctrl = (data['ctrl'][i_frame] - obs[:9])/(env.skip*env.model.opt.timestep)
+        ctrl = (data['ctrl'][i_frame] - obs[:9]) / (env.skip * env.model.opt.timestep)
         act = (ctrl - act_mid) / act_rng
         act = np.clip(act, -0.999, 0.999)
         next_obs, reward, done, env_info = env.step(act)
@@ -146,24 +138,12 @@ def gather_training_data(env, data, filename='demo_playback.mp4', render=None):
 # MAIN =========================================================
 @click.command(help="parse tele-op demos")
 @click.option('--env', '-e', type=str, help='gym env name', required=True)
-@click.option(
-    '--demo_dir',
-    '-d',
-    type=str,
-    help='directory with tele-op logs',
-    required=True)
-@click.option(
-    '--skip',
-    '-s',
-    type=int,
-    help='number of frames to skip (1:no skip)',
-    default=1)
+@click.option('--demo_dir', '-d', type=str, help='directory with tele-op logs', required=True)
+@click.option('--skip', '-s', type=int, help='number of frames to skip (1:no skip)', default=1)
 @click.option('--graph', '-g', type=bool, help='plot logs', default=False)
 @click.option('--save_logs', '-l', type=bool, help='save logs', default=False)
-@click.option(
-    '--view', '-v', type=str, help='render/playback', default='render')
-@click.option(
-    '--render', '-r', type=str, help='onscreen/offscreen', default='onscreen')
+@click.option('--view', '-v', type=str, help='render/playback', default='render')
+@click.option('--render', '-r', type=str, help='onscreen/offscreen', default='onscreen')
 def main(env, demo_dir, skip, graph, save_logs, view, render):
 
     gym_env = gym.make(env)
@@ -179,43 +159,35 @@ def main(env, demo_dir, skip, graph, save_logs, view, render):
         print("log duration %0.2f" % (data['time'][-1] - data['time'][0]))
 
         # plot logs
-        if (graph):
+        if graph:
             print("plotting: " + file)
             viz_parsed_mjl_logs(data)
 
         # save logs
-        if (save_logs):
+        if save_logs:
             pickle.dump(data, open(file[:-4] + ".pkl", 'wb'))
 
         # render logs to video
         if view == 'render':
-            render_demos(
-                gym_env,
-                data,
-                filename=data['logName'][:-4] + '_demo_render.mp4',
-                render=render)
+            render_demos(gym_env, data, filename=data['logName'][:-4] + '_demo_render.mp4', render=render)
 
         # playback logs and gather data
         elif view == 'playback':
             try:
-                obs, act,init_qpos, init_qvel = gather_training_data(gym_env, data,\
-                filename=data['logName'][:-4]+'_playback.mp4', render=render)
+                obs, act, init_qpos, init_qvel = gather_training_data(
+                    gym_env, data, filename=data['logName'][:-4] + '_playback.mp4', render=render
+                )
             except Exception as e:
                 print(e)
                 continue
-            path = {
-                'observations': obs,
-                'actions': act,
-                'goals': obs,
-                'init_qpos': init_qpos,
-                'init_qvel': init_qvel
-            }
+            path = {'observations': obs, 'actions': act, 'goals': obs, 'init_qpos': init_qpos, 'init_qvel': init_qvel}
             paths.append(path)
             # accept = input('accept demo?')
             # if accept == 'n':
             #     continue
             pickle.dump(path, open(demo_dir + env + str(ind) + "_path.pkl", 'wb'))
             print(demo_dir + env + file + "_path.pkl")
+
 
 if __name__ == '__main__':
     main()

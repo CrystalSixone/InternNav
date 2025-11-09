@@ -17,22 +17,15 @@
 import dataclasses
 import datetime
 import getpass
-import gzip
-import json
 import os
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional, Tuple
 
-from absl import logging
-from diffusion_policy.env.block_pushing.utils.pose3d import Pose3d
 import numpy as np
-from scipy.spatial import transform
-import six
-
-
 import pybullet
 import pybullet_data
-import pybullet_utils.bullet_client as bullet_client
+from diffusion_policy.env.block_pushing.utils.pose3d import Pose3d
+from scipy.spatial import transform
 
 Vec3 = Tuple[float, float, float]
 Vec4 = Tuple[float, float, float, float]
@@ -69,13 +62,12 @@ def load_urdf(pybullet_client, file_path, *args, **kwargs):
 
     try:
         import pathlib
+
         asset_path = str(pathlib.Path(__file__).parent.parent.joinpath('assets'))
         if file_path.startswith("third_party/py/envs/assets/"):
             pybullet_client.setAdditionalSearchPath(asset_path)
             file_path = file_path[len("third_party/py/envs/assets/") :]
-        if file_path.startswith(
-            "third_party/bullet/examples/pybullet/gym/pybullet_data/"
-            ):
+        if file_path.startswith("third_party/bullet/examples/pybullet/gym/pybullet_data/"):
             pybullet_client.setAdditionalSearchPath(pybullet_data.getDataPath())
             file_path = file_path[55:]
         # logging.info("Loading URDF %s", file_path)
@@ -96,12 +88,8 @@ def add_visual_sphere(client, center=(0, 0, 0), radius=0.1, rgba=(0.5, 0.5, 0.5,
     Returns:
       Unique integer bullet id of constructed object.
     """
-    vis_obj_id = client.createVisualShape(
-        client.GEOM_SPHERE, radius=radius, rgbaColor=rgba
-    )
-    obj_id = client.createMultiBody(
-        baseCollisionShapeIndex=-1, baseVisualShapeIndex=vis_obj_id, basePosition=center
-    )
+    vis_obj_id = client.createVisualShape(client.GEOM_SPHERE, radius=radius, rgbaColor=rgba)
+    obj_id = client.createMultiBody(baseCollisionShapeIndex=-1, baseVisualShapeIndex=vis_obj_id, basePosition=center)
     return obj_id
 
 
@@ -139,9 +127,7 @@ def decompose_view_matrix(pybullet_view_matrix):
 def world_obj_to_view(world_xyz_obj, world_quat_obj, camera_view, client):
     """Transform object into view space."""
     world_xyz_view, world_quat_view = decompose_view_matrix(camera_view)
-    view_xyz_world, view_quat_world = client.invertTransform(
-        world_xyz_view, world_quat_view
-    )
+    view_xyz_world, view_quat_world = client.invertTransform(world_xyz_view, world_quat_view)
     view_xyz_obj, view_quat_obj = client.multiplyTransforms(
         view_xyz_world, view_quat_world, world_xyz_obj, world_quat_obj
     )
@@ -154,9 +140,7 @@ def image_xy_to_view_ray(xy, cam_width, cam_height, proj_mat_inv):
     # Recall (from http://www.songho.ca/opengl/gl_projectionmatrix.html):
     # xyzw_clip = M_proj * xyzw_eye, and
     # xyz_ndc = xyzw_clip[0:3] / xwzw_clip[3].
-    xyz_ndc = np.array(
-        [2.0 * xy[0] / cam_width - 1.0, -(2.0 * xy[1] / cam_height - 1.0), 0]
-    )  # in [-1, 1]
+    xyz_ndc = np.array([2.0 * xy[0] / cam_width - 1.0, -(2.0 * xy[1] / cam_height - 1.0), 0])  # in [-1, 1]
     xyzw_clip = np.concatenate([xyz_ndc, [1]])
     xyzw_eye = proj_mat_inv @ xyzw_clip
     origin = np.zeros(3)
@@ -191,9 +175,7 @@ def get_workspace(env):
         workspace_origin,
         workspace_quat,
     ) = env.pybullet_client.getBasePositionAndOrientation(env.workspace_uid)
-    workspace_normal = rotation_to_matrix(transform.Rotation.from_quat(workspace_quat))[
-        2, 0:3
-    ]
+    workspace_normal = rotation_to_matrix(transform.Rotation.from_quat(workspace_quat))[2, 0:3]
 
     return workspace_origin, workspace_normal
 
@@ -208,9 +190,7 @@ def reset_camera_pose(env, view_type):
 
         viewm, _, front_position, lookat, _ = env.calc_camera_params(image_size)
 
-        euler = matrix_to_rotation(pybullet_mat_to_numpy_4x4(viewm)[0:3, 0:3]).as_euler(
-            "xyz", degrees=False
-        )
+        euler = matrix_to_rotation(pybullet_mat_to_numpy_4x4(viewm)[0:3, 0:3]).as_euler("xyz", degrees=False)
         pitch = euler[1]
         yaw = -euler[2]
         # The distance is a bit far away (the GL view has higher FOV).
@@ -288,9 +268,7 @@ class ObjState:
         if njoints != len(self.joint_info) or njoints != len(self.joint_state):
             raise ValueError("Incorrect number of joint info state pairs.")
 
-        for i, (joint_info, joint_state) in enumerate(
-            zip(self.joint_info, self.joint_state)
-        ):
+        for i, (joint_info, joint_state) in enumerate(zip(self.joint_info, self.joint_state)):
             joint_index = joint_info[0]
             if joint_index != i:
                 raise ValueError("Joint index mismatch.")
@@ -299,15 +277,10 @@ class ObjState:
             # same info as the state joint.
             cur_joint_info = ObjState._get_joint_info(client, obj_id, joint_index)
             if cur_joint_info != joint_info:
-                raise ValueError(
-                    "joint_info mismatch %s vs %s (expected)"
-                    % (str(cur_joint_info), str(joint_info))
-                )
+                raise ValueError("joint_info mismatch %s vs %s (expected)" % (str(cur_joint_info), str(joint_info)))
             joint_position = joint_state[0]
             joint_velocity = joint_state[1]
-            client.resetJointState(
-                obj_id, i, targetValue=joint_position, targetVelocity=joint_velocity
-            )
+            client.resetJointState(obj_id, i, targetValue=joint_position, targetVelocity=joint_velocity)
 
     def serialize(self):
         return {
@@ -358,11 +331,7 @@ class XarmState(ObjState):
 
     @staticmethod
     def deserialize(data):
-        goal_translation = (
-            None
-            if not data["goal_translation"]
-            else _lists_to_tuple(data["goal_translation"])
-        )
+        goal_translation = None if not data["goal_translation"] else _lists_to_tuple(data["goal_translation"])
         return XarmState(
             obj_id=data["obj_id"],
             base_pose=_lists_to_tuple(data["base_pose"]),
@@ -380,10 +349,7 @@ def _serialize_pybullet_state(pybullet_state):
         return [_serialize_pybullet_state(entry) for entry in pybullet_state]
     elif isinstance(pybullet_state, dict):
         assert "_serialized_obj_name" not in pybullet_state
-        return {
-            key: _serialize_pybullet_state(value)
-            for key, value in pybullet_state.items()
-        }
+        return {key: _serialize_pybullet_state(value) for key, value in pybullet_state.items()}
     elif isinstance(pybullet_state, (XarmState, ObjState)):
         return {
             "_serialized_obj_name": type(pybullet_state).__name__,
@@ -392,10 +358,7 @@ def _serialize_pybullet_state(pybullet_state):
     elif isinstance(pybullet_state, int):
         return pybullet_state
     else:
-        raise ValueError(
-            "Unhandled type for object %s, type %s"
-            % (str(pybullet_state), type(pybullet_state))
-        )
+        raise ValueError("Unhandled type for object %s, type %s" % (str(pybullet_state), type(pybullet_state)))
 
 
 def _deserialize_pybullet_state(state):
@@ -411,9 +374,7 @@ def _deserialize_pybullet_state(state):
             else:
                 raise ValueError("Unsupported: %s" % state["_serialized_obj_name"])
         else:
-            return {
-                key: _deserialize_pybullet_state(value) for key, value in state.items()
-            }
+            return {key: _deserialize_pybullet_state(value) for key, value in state.items()}
     elif isinstance(state, int):
         return state
     else:
@@ -423,6 +384,7 @@ def _deserialize_pybullet_state(state):
 def write_pybullet_state(filename, pybullet_state, task, actions=None):
     """Serialize pybullet state to json file."""
     import torch
+
     data = {
         "pybullet_state": _serialize_pybullet_state(pybullet_state),
         "state_version": PYBULLET_STATE_VERSION,
@@ -437,14 +399,14 @@ def write_pybullet_state(filename, pybullet_state, task, actions=None):
 def read_pybullet_state(filename):
     """Deserialize pybullet state from json file."""
     import torch
+
     data = torch.load(filename)
 
     assert isinstance(data, dict)
 
     if data["state_version"] != PYBULLET_STATE_VERSION:
         raise ValueError(
-            "incompatible state data (version %d, expected %d)"
-            % (data["state_version"], PYBULLET_STATE_VERSION)
+            "incompatible state data (version %d, expected %d)" % (data["state_version"], PYBULLET_STATE_VERSION)
         )
 
     data["pybullet_state"] = _deserialize_pybullet_state(data["pybullet_state"])

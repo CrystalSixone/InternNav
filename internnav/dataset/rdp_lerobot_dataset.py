@@ -1,11 +1,9 @@
+import copy
 import random
 from collections import defaultdict
 
-import lmdb
-import msgpack_numpy
 import numpy as np
 import torch
-import copy
 from PIL import Image
 from torchvision.transforms import (
     CenterCrop,
@@ -26,7 +24,11 @@ except ImportError:
 from internnav.dataset.base import BaseDataset, ObservationsDict, _block_shuffle
 from internnav.evaluator.utils.common import norm_depth
 from internnav.model.basemodel.LongCLIP.model import longclip
-from internnav.model.basemodel.rdp.utils import get_delta, normalize_data, to_local_coords
+from internnav.model.basemodel.rdp.utils import (
+    get_delta,
+    normalize_data,
+    to_local_coords,
+)
 from internnav.model.utils.feature_extract import extract_instruction_tokens
 from internnav.utils.lerobot_as_lmdb import LerobotAsLmdb
 
@@ -105,7 +107,19 @@ class RDP_LerobotDataset(BaseDataset):
         self.to_pil = ToPILImage()
         self.image_processor = _transform(n_px=224)  # copy from clip-long
         self.lerobot_as_lmdb = LerobotAsLmdb(self.lerobot_features_dir)
-        self.lmdb_keys = self.lerobot_as_lmdb.get_all_keys()
+        all_lmdb_keys = self.lerobot_as_lmdb.get_all_keys()
+
+        # Filter LMDB keys based on dataset_data (if provided)
+        if dataset_data:
+            allowed_keys = set(dataset_data.keys())
+            self.lmdb_keys = [k for k in all_lmdb_keys if k in allowed_keys]
+            print(
+                f"Filtered RDP dataset: {len(all_lmdb_keys)} total episodes -> {len(self.lmdb_keys)} selected episodes"
+            )
+        else:
+            self.lmdb_keys = all_lmdb_keys
+            print(f"Using all {len(all_lmdb_keys)} episodes (no filtering)")
+
         self.length = len(self.lmdb_keys)
 
         self.start = 0
@@ -126,6 +140,30 @@ class RDP_LerobotDataset(BaseDataset):
             self.BRG_to_RGB = True
         else:
             self.BRG_to_RGB = False
+
+    def _process_instruction(self, instruction_data):
+        """
+        Process instruction data that can be either string or dict format.
+
+        Args:
+            instruction_data: Either a string or dict with keys {formal, natural, casual}
+
+        Returns:
+            List of instruction strings to create samples from
+        """
+        if isinstance(instruction_data, dict):
+            # Dictionary format: extract all three styles
+            instructions = []
+            for style in ['formal', 'natural', 'casual']:
+                if style in instruction_data:
+                    instructions.append(instruction_data[style])
+            return instructions if instructions else [str(instruction_data)]
+        elif isinstance(instruction_data, str):
+            # String format: return as single-element list
+            return [instruction_data]
+        else:
+            # Fallback: convert to string
+            return [str(instruction_data)]
 
     def _load_next(self):  # noqa: C901
         if len(self._preload) == 0:
@@ -174,14 +212,12 @@ class RDP_LerobotDataset(BaseDataset):
                         data['camera_info'][self.camera_name]['rgb'] = data['camera_info'][self.camera_name]['rgb'][
                             :-drop_last_frame_nums
                         ]
-                        data['camera_info'][self.camera_name]['depth'] = data['camera_info'][self.camera_name][
-                            'depth'
-                        ][:-drop_last_frame_nums]
-                        data['robot_info']['yaw'] = data['robot_info']['yaw'][:-drop_last_frame_nums]
-                        data['robot_info']['position'] = data['robot_info']['position'][:-drop_last_frame_nums]
-                        data['robot_info']['orientation'] = data['robot_info']['orientation'][
+                        data['camera_info'][self.camera_name]['depth'] = data['camera_info'][self.camera_name]['depth'][
                             :-drop_last_frame_nums
                         ]
+                        data['robot_info']['yaw'] = data['robot_info']['yaw'][:-drop_last_frame_nums]
+                        data['robot_info']['position'] = data['robot_info']['position'][:-drop_last_frame_nums]
+                        data['robot_info']['orientation'] = data['robot_info']['orientation'][:-drop_last_frame_nums]
                         data['progress'] = data['progress'][:-drop_last_frame_nums]
                         data['step'] = data['step'][:-drop_last_frame_nums]
 
@@ -192,35 +228,36 @@ class RDP_LerobotDataset(BaseDataset):
                     if yaw > np.pi:
                         yaw -= 2 * np.pi
                     yaws[yaw_i] = yaw
-                
+
                 episodes_in_json = data_to_load['episodes_in_json']
 
-                instructions = [
-                    episodes_in_json[ep_idx]['instruction_text'][: self.config.model.text_encoder.max_length]
-                    for ep_idx in range(len(episodes_in_json))
-                ]
+                # Process instructions based on format (string vs dict)
+                for ep_idx in range(len(episodes_in_json)):
+                    instruction_text = episodes_in_json[ep_idx]['instruction_text']
+                    # Get list of instructions (1 for string, 3 for dict)
+                    instructions = self._process_instruction(instruction_text)
 
-                for instruction in instructions:
-                    new_data = self._create_new_data(data, yaws, instruction)
-                    # limit the max length
-                    if self.BRG_to_RGB:
-                        # This is for 3dgs dataset which is BRG format
-                        new_data['rgb'] = new_data['rgb'][..., ::-1]
-                        new_data['depth'] = new_data['depth'] * 100
-                        new_data['depth'] = norm_depth(new_data['depth'])
-                    for k, v in new_data.items():
-                        if isinstance(v, np.ndarray):
-                            new_data[k] = v[: self.config.model.max_step]
-                    new_preload.append(new_data)
-                    finish_status_list.append(finish_status)
-                    fail_reasons_list.append(fail_reason)
-                    lengths.append(len(new_data))
+                    # Create samples for each instruction
+                    for instruction in instructions:
+                        new_data = self._create_new_data(data, yaws, instruction)
+                        # limit the max length
+                        if self.BRG_to_RGB:
+                            # This is for 3dgs dataset which is BRG format
+                            new_data['rgb'] = new_data['rgb'][..., ::-1]
+                            new_data['depth'] = new_data['depth'] * 100
+                            new_data['depth'] = norm_depth(new_data['depth'])
+                        for k, v in new_data.items():
+                            if isinstance(v, np.ndarray):
+                                new_data[k] = v[: self.config.model.max_step]
+                        new_preload.append(new_data)
+                        finish_status_list.append(finish_status)
+                        fail_reasons_list.append(fail_reason)
+                        lengths.append(len(new_data))
 
             if self.need_extract_instr_features:
                 new_preload = extract_instruction_tokens(
                     new_preload, self.bert_tokenizer, is_clip_long=self.is_clip_long
                 )
-
 
             # process the instruction
             # copy the instruction to each step
@@ -370,7 +407,18 @@ class RDP_LerobotDataset(BaseDataset):
         return actions
 
     def __len__(self) -> int:
-        return self.length * 3
+        # Determine multiplier based on dataset type
+        # coarse: 3 instruction styles (formal, natural, casual)
+        # fine: 1 instruction style (string)
+        # train (coarse+fine mixed): average of 2
+        if 'coarse' in self.lerobot_features_dir.lower():
+            multiplier = 3
+        elif 'fine' in self.lerobot_features_dir.lower():
+            multiplier = 1
+        else:
+            # train or mixed dataset
+            multiplier = 2
+        return len(self.lmdb_keys) * multiplier
 
     def __iter__(self):
         worker_info = torch.utils.data.get_worker_info()
@@ -447,12 +495,7 @@ def rdp_collate_fn(global_batch_size=None):
         observations_batch = ObservationsDict(observations_batch)
         # Expand B to match the flattened batch size
         B_expanded = B.repeat(observations_batch['prev_actions'].shape[0]).view(-1, 1)
-            
-        return (
-            observations_batch,
-            observations_batch['prev_actions'],
-            not_done_masks_batch.view(-1, 1),
-            B_expanded
-        )
-    
+
+        return (observations_batch, observations_batch['prev_actions'], not_done_masks_batch.view(-1, 1), B_expanded)
+
     return _rdp_collate_fn

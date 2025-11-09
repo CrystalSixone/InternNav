@@ -29,7 +29,7 @@ shape_meta: &shape_meta
       shape: [4]
     robot1_gripper_qpos:
       shape: [2]
-  action: 
+  action:
     shape: [14]
 
 task_name: &task_name transport

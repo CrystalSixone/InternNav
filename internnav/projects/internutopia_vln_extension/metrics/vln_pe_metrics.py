@@ -1,10 +1,11 @@
 import numpy as np
-from internnav.projects.internutopia_vln_extension.configs.metrics.vln_pe_metrics import VLNPEMetricCfg
-from internnav.projects.internutopia_vln_extension.configs.tasks.vln_eval_task import VLNEvalTaskCfg
 from internutopia.core.task.metric import BaseMetric
 
 from internnav.projects.internutopia_vln_extension.configs.metrics.vln_pe_metrics import (
     VLNPEMetricCfg,
+)
+from internnav.projects.internutopia_vln_extension.configs.tasks.vln_eval_task import (
+    VLNEvalTaskCfg,
 )
 
 XY_DISTANCE_CLOSE_THRESHHOLD = 1.0
@@ -65,17 +66,21 @@ class VLNPEMetrics(BaseMetric):
         self.fail_reason = obs['fail_reason'] if 'fail_reason' in obs else ''
 
         # update step count
-        self.sim_step += 1  
+        self.sim_step += 1
         # calculate current path_length
         if self.prev_position is not None:  # initialize, warm_up will change position
-            self.current_path_length += np.linalg.norm(current_position[:2] - self.prev_position[:2])  # total path length, only xy
+            self.current_path_length += np.linalg.norm(
+                current_position[:2] - self.prev_position[:2]
+            )  # total path length, only xy
         else:
-            self.pred_traj_list[0].append(current_position)  
+            self.pred_traj_list[0].append(current_position)
         self.prev_position = current_position
         # current
         if obs['finish_action']:
             # add trajectory array
-            self.pred_traj_list[0].append(current_position)  # trajectory array, consider calculation to complete trajectory
+            self.pred_traj_list[0].append(
+                current_position
+            )  # trajectory array, consider calculation to complete trajectory
 
             # calculate NE, every round needs
             self.ne = np.linalg.norm(current_position[:2] - self.goal_position[:2])

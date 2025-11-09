@@ -1,4 +1,5 @@
-""" Kitchen environment for long horizon manipulation """
+"""Kitchen environment for long horizon manipulation"""
+
 #!/usr/bin/python
 #
 # Copyright 2020 Google LLC
@@ -16,30 +17,25 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
 from adept_envs import robot_env
 from adept_envs.utils.configurable import configurable
-from gym import spaces
 from dm_control.mujoco import engine
+from gym import spaces
+
 
 @configurable(pickleable=True)
 class KitchenV0(robot_env.RobotEnv):
 
-    CALIBRATION_PATHS = {
-        'default':
-        os.path.join(os.path.dirname(__file__), 'robot/franka_config.xml')
-    }
+    CALIBRATION_PATHS = {'default': os.path.join(os.path.dirname(__file__), 'robot/franka_config.xml')}
     # Converted to velocity actuation
     ROBOTS = {'robot': 'adept_envs.franka.robot.franka_robot:Robot_VelAct'}
-    MODEl = os.path.join(
-        os.path.dirname(__file__),
-        '../franka/assets/franka_kitchen_jntpos_act_ab.xml')
+    MODEl = os.path.join(os.path.dirname(__file__), '../franka/assets/franka_kitchen_jntpos_act_ab.xml')
     N_DOF_ROBOT = 9
     N_DOF_OBJECT = 21
 
-    def __init__(self, 
-            robot_params={}, frame_skip=40, 
-            use_abs_action=False):
+    def __init__(self, robot_params={}, frame_skip=40, use_abs_action=False):
         self.goal_concat = True
         self.obs_dict = {}
         self.robot_noise_ratio = 0.1  # 10% as per robot_config specs
@@ -50,10 +46,7 @@ class KitchenV0(robot_env.RobotEnv):
 
         super().__init__(
             self.MODEl,
-            robot=self.make_robot(
-                n_jnt=self.N_DOF_ROBOT,  #root+robot_jnts
-                n_obj=self.N_DOF_OBJECT,
-                **robot_params),
+            robot=self.make_robot(n_jnt=self.N_DOF_ROBOT, n_obj=self.N_DOF_OBJECT, **robot_params),  # root+robot_jnts
             frame_skip=frame_skip,
             camera_settings=dict(
                 distance=4.5,
@@ -64,30 +57,56 @@ class KitchenV0(robot_env.RobotEnv):
         self.init_qpos = self.sim.model.key_qpos[0].copy()
 
         # For the microwave kettle slide hinge
-        self.init_qpos = np.array([ 1.48388023e-01, -1.76848573e+00,  1.84390296e+00, -2.47685760e+00,
-                                    2.60252026e-01,  7.12533105e-01,  1.59515394e+00,  4.79267505e-02,
-                                    3.71350919e-02, -2.66279850e-04, -5.18043486e-05,  3.12877220e-05,
-                                   -4.51199853e-05, -3.90842156e-06, -4.22629655e-05,  6.28065475e-05,
-                                    4.04984708e-05,  4.62730939e-04, -2.26906415e-04, -4.65501369e-04,
-                                   -6.44129196e-03, -1.77048263e-03,  1.08009684e-03, -2.69397440e-01,
-                                    3.50383255e-01,  1.61944683e+00,  1.00618764e+00,  4.06395120e-03,
-                                   -6.62095997e-03, -2.68278933e-04])
+        self.init_qpos = np.array(
+            [
+                1.48388023e-01,
+                -1.76848573e00,
+                1.84390296e00,
+                -2.47685760e00,
+                2.60252026e-01,
+                7.12533105e-01,
+                1.59515394e00,
+                4.79267505e-02,
+                3.71350919e-02,
+                -2.66279850e-04,
+                -5.18043486e-05,
+                3.12877220e-05,
+                -4.51199853e-05,
+                -3.90842156e-06,
+                -4.22629655e-05,
+                6.28065475e-05,
+                4.04984708e-05,
+                4.62730939e-04,
+                -2.26906415e-04,
+                -4.65501369e-04,
+                -6.44129196e-03,
+                -1.77048263e-03,
+                1.08009684e-03,
+                -2.69397440e-01,
+                3.50383255e-01,
+                1.61944683e00,
+                1.00618764e00,
+                4.06395120e-03,
+                -6.62095997e-03,
+                -2.68278933e-04,
+            ]
+        )
 
         self.init_qvel = self.sim.model.key_qvel[0].copy()
 
         self.act_mid = np.zeros(self.N_DOF_ROBOT)
         self.act_amp = 2.0 * np.ones(self.N_DOF_ROBOT)
 
-        act_lower = -1*np.ones((self.N_DOF_ROBOT,))
-        act_upper =  1*np.ones((self.N_DOF_ROBOT,))
+        act_lower = -1 * np.ones((self.N_DOF_ROBOT,))
+        act_upper = 1 * np.ones((self.N_DOF_ROBOT,))
         if use_abs_action:
-            act_lower = act_lower * 8.
-            act_upper = act_upper * 8.
+            act_lower = act_lower * 8.0
+            act_upper = act_upper * 8.0
             self.act_amp = np.ones(self.N_DOF_ROBOT)
 
         self.action_space = spaces.Box(act_lower, act_upper)
 
-        obs_upper = 8. * np.ones(self.obs_dim)
+        obs_upper = 8.0 * np.ones(self.obs_dim)
         obs_lower = -obs_upper
         self.observation_space = spaces.Box(obs_lower, obs_upper)
 
@@ -103,13 +122,12 @@ class KitchenV0(robot_env.RobotEnv):
         else:
             self.goal = self._get_task_goal()  # update goal if init
 
-        self.robot.step(
-            self, a, step_duration=self.skip * self.model.opt.timestep)
+        self.robot.step(self, a, step_duration=self.skip * self.model.opt.timestep)
 
         # observations
         obs = self._get_obs()
 
-        #rewards
+        # rewards
         reward_dict, score = self._get_reward_n_score(self.obs_dict)
 
         # termination
@@ -128,8 +146,7 @@ class KitchenV0(robot_env.RobotEnv):
         return obs, reward_dict['r_total'], done, env_info
 
     def _get_obs(self):
-        t, qp, qv, obj_qp, obj_qv = self.robot.get_obs(
-            self, robot_noise_ratio=self.robot_noise_ratio)
+        t, qp, qv, obj_qp, obj_qv = self.robot.get_obs(self, robot_noise_ratio=self.robot_noise_ratio)
 
         self.obs_dict = {}
         self.obs_dict['t'] = t
@@ -146,7 +163,7 @@ class KitchenV0(robot_env.RobotEnv):
         reset_vel = self.init_qvel[:].copy()
         self.robot.reset(self, reset_pos, reset_vel)
         self.sim.forward()
-        self.goal = self._get_task_goal()  #sample a new goal on reset
+        self.goal = self._get_task_goal()  # sample a new goal on reset
         return self._get_obs()
 
     def evaluate_success(self, paths):
@@ -164,8 +181,7 @@ class KitchenV0(robot_env.RobotEnv):
         success_percentage = num_success * 100.0 / num_paths
 
         # fuse results
-        return np.sign(mean_score) * (
-            1e6 * round(success_percentage, 2) + abs(mean_score))
+        return np.sign(mean_score) * (1e6 * round(success_percentage, 2) + abs(mean_score))
 
     def close_env(self):
         self.robot.close()
@@ -181,24 +197,24 @@ class KitchenV0(robot_env.RobotEnv):
     def goal_space(self):
         len_obs = self.observation_space.low.shape[0]
         env_lim = np.abs(self.observation_space.low[0])
-        return spaces.Box(low=-env_lim, high=env_lim, shape=(len_obs//2,))
+        return spaces.Box(low=-env_lim, high=env_lim, shape=(len_obs // 2,))
 
     def convert_to_active_observation(self, observation):
         return observation
+
 
 class KitchenTaskRelaxV1(KitchenV0):
     """Kitchen environment with proper camera and goal setup"""
 
     def __init__(self, use_abs_action=False):
-        super(KitchenTaskRelaxV1, self).__init__(
-            use_abs_action=use_abs_action)
+        super(KitchenTaskRelaxV1, self).__init__(use_abs_action=use_abs_action)
 
     def _get_reward_n_score(self, obs_dict):
         reward_dict = {}
-        reward_dict['true_reward'] = 0.
-        reward_dict['bonus'] = 0.
-        reward_dict['r_total'] = 0.
-        score = 0.
+        reward_dict['true_reward'] = 0.0
+        reward_dict['bonus'] = 0.0
+        reward_dict['r_total'] = 0.0
+        score = 0.0
         return reward_dict, score
 
     def render(self, mode='human', width=1280, height=720, custom=True, **kwargs):
@@ -207,7 +223,7 @@ class KitchenTaskRelaxV1(KitchenV0):
             if 'distance' not in kwargs:
                 kwargs['distance'] = 2.2
             if 'lookat' not in kwargs:
-                kwargs['lookat'] = [-0.2, .5, 2.]
+                kwargs['lookat'] = [-0.2, 0.5, 2.0]
             if 'azimuth' not in kwargs:
                 kwargs['azimuth'] = 70
             if 'elevation' not in kwargs:
@@ -216,6 +232,4 @@ class KitchenTaskRelaxV1(KitchenV0):
             img = camera.render()
             return img
         else:
-            return super(KitchenTaskRelaxV1, self).render(
-                mode=mode, width=width, height=height, **kwargs)
-
+            return super(KitchenTaskRelaxV1, self).render(mode=mode, width=width, height=height, **kwargs)

@@ -230,9 +230,9 @@ class VlnMultiEvaluator(Evaluator):
             # modify original reset_info
             reset_infos = np.array(reset_infos)
             reset_infos[reset_env_ids] = new_reset_infos if len(new_reset_infos) > 0 else None
-            self.runner_status[
-                np.vectorize(lambda x: x)(reset_infos) == None  # noqa: E711
-            ] = runner_status_code.TERMINATED
+            self.runner_status[np.vectorize(lambda x: x)(reset_infos) == None] = (  # noqa: E711
+                runner_status_code.TERMINATED
+            )
             log.info(f'env{np.vectorize(lambda x: x)(reset_infos) == None}: states switch to TERMINATED.')
             reset_infos = reset_infos.tolist()
 

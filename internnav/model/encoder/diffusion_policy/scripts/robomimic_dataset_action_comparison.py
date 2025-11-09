@@ -1,18 +1,18 @@
 if __name__ == "__main__":
-    import sys
-    import os
     import pathlib
+    import sys
 
     ROOT_DIR = str(pathlib.Path(__file__).parent.parent.parent)
     sys.path.append(ROOT_DIR)
 
-import os
-import click
 import pathlib
+
+import click
 import h5py
 import numpy as np
-from tqdm import tqdm
 from scipy.spatial.transform import Rotation
+from tqdm import tqdm
+
 
 def read_all_actions(hdf5_file, metric_skip_steps=1):
     n_demos = len(hdf5_file['data'])
@@ -39,13 +39,14 @@ def main(input, output):
 
     input_all_actions = read_all_actions(input_file)
     output_all_actions = read_all_actions(output_file)
-    pos_dist = np.linalg.norm(input_all_actions[:,:3] - output_all_actions[:,:3], axis=-1)
-    rot_dist = (Rotation.from_rotvec(input_all_actions[:,3:6]
-        ) * Rotation.from_rotvec(output_all_actions[:,3:6]).inv()
-        ).magnitude()
+    pos_dist = np.linalg.norm(input_all_actions[:, :3] - output_all_actions[:, :3], axis=-1)
+    rot_dist = (
+        Rotation.from_rotvec(input_all_actions[:, 3:6]) * Rotation.from_rotvec(output_all_actions[:, 3:6]).inv()
+    ).magnitude()
 
     print(f'max pos dist: {pos_dist.max()}')
     print(f'max rot dist: {rot_dist.max()}')
+
 
 if __name__ == "__main__":
     main()

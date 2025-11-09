@@ -125,7 +125,9 @@ def load_obs_from_meta(meta_path: str, nan_for_zeros: bool = False) -> Dict:
 
     # 尺寸一致性检查（若两者都有）
     if rgb is not None and depth is not None and depth.shape != rgb.shape[:2]:
-        raise ValueError(f"Shape mismatch: rgb {rgb.shape[:2]} vs depth {depth.shape}. " "确保保存前已对齐（align 到 color）。")
+        raise ValueError(
+            f"Shape mismatch: rgb {rgb.shape[:2]} vs depth {depth.shape}. " "确保保存前已对齐（align 到 color）。"
+        )
 
     obs = {
         "rgb": rgb,

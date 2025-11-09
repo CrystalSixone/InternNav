@@ -1,9 +1,7 @@
+from typing import Optional
+
 import torch
-import numpy as np
-
 import tqdm
-
-from typing import Optional, Tuple, Union
 from diffusion_policy.model.common.dict_of_tensor_mixin import DictOfTensorMixin
 
 
@@ -29,9 +27,7 @@ class KMeansDiscretizer(DictOfTensorMixin):
         ), f"Input action dimension {self.action_dim} does not match fitted model {input_actions.shape[-1]}"
 
         flattened_actions = input_actions.view(-1, self.action_dim)
-        cluster_centers = KMeansDiscretizer._kmeans(
-            flattened_actions, ncluster=self.n_bins
-        )
+        cluster_centers = KMeansDiscretizer._kmeans(flattened_actions, ncluster=self.n_bins)
         self.params_dict['bin_centers'] = cluster_centers
 
     @property
@@ -58,16 +54,11 @@ class KMeansDiscretizer(DictOfTensorMixin):
             nanix = torch.any(torch.isnan(c), dim=1)
             ndead = nanix.sum().item()
             if ndead:
-                tqdm.tqdm.write(
-                    "done step %d/%d, re-initialized %d dead clusters"
-                    % (i + 1, niter, ndead)
-                )
+                tqdm.tqdm.write("done step %d/%d, re-initialized %d dead clusters" % (i + 1, niter, ndead))
             c[nanix] = x[torch.randperm(N)[:ndead]]  # re-init dead clusters
         return c
 
-    def encode_into_latent(
-        self, input_action: torch.Tensor, input_rep: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def encode_into_latent(self, input_action: torch.Tensor, input_rep: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Given the input action, discretize it using the k-Means clustering algorithm.
 
@@ -79,9 +70,7 @@ class KMeansDiscretizer(DictOfTensorMixin):
         discretized_action (shape: ... x num_tokens): The discretized action.
         If self.predict_offsets is True, then the offsets are also returned.
         """
-        assert (
-            input_action.shape[-1] == self.action_dim
-        ), "Input action dimension does not match fitted model"
+        assert input_action.shape[-1] == self.action_dim, "Input action dimension does not match fitted model"
 
         # flatten the input action
         flattened_actions = input_action.view(-1, self.action_dim)
@@ -128,9 +117,7 @@ class KMeansDiscretizer(DictOfTensorMixin):
         # get the closest cluster center
         closest_cluster_center = self.params_dict['bin_centers'][latent_action_batch]
         # Reshape to the original shape
-        reconstructed_action = closest_cluster_center.view(
-            latent_action_batch.shape[:-1] + (self.action_dim,)
-        )
+        reconstructed_action = closest_cluster_center.view(latent_action_batch.shape[:-1] + (self.action_dim,))
         if offsets is not None:
             reconstructed_action += offsets
         return reconstructed_action

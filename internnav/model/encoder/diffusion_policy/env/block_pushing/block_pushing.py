@@ -19,22 +19,19 @@ import collections
 import enum
 import math
 import time
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List
 
 import gym
-from gym import spaces
-from gym.envs import registration
-from diffusion_policy.env.block_pushing.utils import utils_pybullet
-from diffusion_policy.env.block_pushing.utils import xarm_sim_robot
-from diffusion_policy.env.block_pushing.utils.pose3d import Pose3d
-from diffusion_policy.env.block_pushing.utils.utils_pybullet import ObjState
-from diffusion_policy.env.block_pushing.utils.utils_pybullet import XarmState
+import matplotlib.pyplot as plt
 import numpy as np
-from scipy.spatial import transform
 import pybullet
 import pybullet_utils.bullet_client as bullet_client
-
-import matplotlib.pyplot as plt
+from diffusion_policy.env.block_pushing.utils import utils_pybullet, xarm_sim_robot
+from diffusion_policy.env.block_pushing.utils.pose3d import Pose3d
+from diffusion_policy.env.block_pushing.utils.utils_pybullet import ObjState, XarmState
+from gym import spaces
+from gym.envs import registration
+from scipy.spatial import transform
 
 BLOCK_URDF_PATH = "third_party/py/envs/assets/block.urdf"
 PLANE_URDF_PATH = "third_party/bullet/examples/pybullet/gym/pybullet_data/" "plane.urdf"
@@ -53,36 +50,16 @@ WORKSPACE_BOUNDS = np.array(((0.15, -0.5), (0.7, 0.5)))
 # pylint: disable=line-too-long
 ACTION_MIN = np.array([-0.02547718, -0.02090043], np.float32)
 ACTION_MAX = np.array([0.02869084, 0.04272365], np.float32)
-EFFECTOR_TARGET_TRANSLATION_MIN = np.array(
-    [0.1774151772260666, -0.6287994794547558], np.float32
-)
-EFFECTOR_TARGET_TRANSLATION_MAX = np.array(
-    [0.5654461532831192, 0.5441607423126698], np.float32
-)
-EFFECTOR_TARGET_TO_BLOCK_TRANSLATION_MIN = np.array(
-    [-0.07369826920330524, -0.11395704373717308], np.float32
-)
-EFFECTOR_TARGET_TO_BLOCK_TRANSLATION_MAX = np.array(
-    [0.10131562314927578, 0.19391131028532982], np.float32
-)
-EFFECTOR_TARGET_TO_TARGET_TRANSLATION_MIN = np.array(
-    [-0.17813862301409245, -0.3309651017189026], np.float32
-)
-EFFECTOR_TARGET_TO_TARGET_TRANSLATION_MAX = np.array(
-    [0.23726161383092403, 0.8404090404510498], np.float32
-)
-BLOCK_ORIENTATION_COS_SIN_MIN = np.array(
-    [-2.0649861991405487, -0.6154364347457886], np.float32
-)
-BLOCK_ORIENTATION_COS_SIN_MAX = np.array(
-    [1.6590178310871124, 1.8811014890670776], np.float32
-)
-TARGET_ORIENTATION_COS_SIN_MIN = np.array(
-    [-1.0761439241468906, -0.8846937336493284], np.float32
-)
-TARGET_ORIENTATION_COS_SIN_MAX = np.array(
-    [-0.8344330154359341, 0.8786859593819827], np.float32
-)
+EFFECTOR_TARGET_TRANSLATION_MIN = np.array([0.1774151772260666, -0.6287994794547558], np.float32)
+EFFECTOR_TARGET_TRANSLATION_MAX = np.array([0.5654461532831192, 0.5441607423126698], np.float32)
+EFFECTOR_TARGET_TO_BLOCK_TRANSLATION_MIN = np.array([-0.07369826920330524, -0.11395704373717308], np.float32)
+EFFECTOR_TARGET_TO_BLOCK_TRANSLATION_MAX = np.array([0.10131562314927578, 0.19391131028532982], np.float32)
+EFFECTOR_TARGET_TO_TARGET_TRANSLATION_MIN = np.array([-0.17813862301409245, -0.3309651017189026], np.float32)
+EFFECTOR_TARGET_TO_TARGET_TRANSLATION_MAX = np.array([0.23726161383092403, 0.8404090404510498], np.float32)
+BLOCK_ORIENTATION_COS_SIN_MIN = np.array([-2.0649861991405487, -0.6154364347457886], np.float32)
+BLOCK_ORIENTATION_COS_SIN_MAX = np.array([1.6590178310871124, 1.8811014890670776], np.float32)
+TARGET_ORIENTATION_COS_SIN_MIN = np.array([-1.0761439241468906, -0.8846937336493284], np.float32)
+TARGET_ORIENTATION_COS_SIN_MAX = np.array([-0.8344330154359341, 0.8786859593819827], np.float32)
 
 # Hardcoded Pose joints to make sure we don't have surprises from using the
 # IK solver on reset. The joint poses correspond to the Pose with:
@@ -189,7 +166,7 @@ class BlockPush(gym.Env):
         goal_dist_tolerance=0.01,
         effector_height=None,
         visuals_mode="default",
-        abs_action=False
+        abs_action=False,
     ):
         """Creates an env instance.
 
@@ -258,17 +235,12 @@ class BlockPush(gym.Env):
 
         assert isinstance(self._pybullet_client, bullet_client.BulletClient)
         self._control_frequency = control_frequency
-        self._step_frequency = (
-            1 / self._pybullet_client.getPhysicsEngineParameters()["fixedTimeStep"]
-        )
+        self._step_frequency = 1 / self._pybullet_client.getPhysicsEngineParameters()["fixedTimeStep"]
 
         self._last_loop_time = None
         self._last_loop_frame_sleep_time = None
         if self._step_frequency % self._control_frequency != 0:
-            raise ValueError(
-                "Control frequency should be a multiple of the "
-                "configured Bullet TimeStep."
-            )
+            raise ValueError("Control frequency should be a multiple of the " "configured Bullet TimeStep.")
         self._sim_steps_per_step = int(self._step_frequency / self._control_frequency)
 
         self.rendered_img = None
@@ -335,9 +307,7 @@ class BlockPush(gym.Env):
         self._pybullet_client.setPhysicsEngineParameter(enableFileCaching=0)
         self._pybullet_client.setGravity(0, 0, -9.8)
 
-        utils_pybullet.load_urdf(
-            self._pybullet_client, PLANE_URDF_PATH, basePosition=[0, 0, -0.001]
-        )
+        utils_pybullet.load_urdf(self._pybullet_client, PLANE_URDF_PATH, basePosition=[0, 0, -0.001])
         self._workspace_uid = utils_pybullet.load_urdf(
             self._pybullet_client,
             self._workspace_urdf_path,
@@ -364,14 +334,8 @@ class BlockPush(gym.Env):
         else:
             target_urdf_path = ZONE_URDF_PATH
 
-        self._target_id = utils_pybullet.load_urdf(
-            self._pybullet_client, target_urdf_path, useFixedBase=True
-        )
-        self._block_ids = [
-            utils_pybullet.load_urdf(
-                self._pybullet_client, BLOCK_URDF_PATH, useFixedBase=False
-            )
-        ]
+        self._target_id = utils_pybullet.load_urdf(self._pybullet_client, target_urdf_path, useFixedBase=True)
+        self._block_ids = [utils_pybullet.load_urdf(self._pybullet_client, BLOCK_URDF_PATH, useFixedBase=False)]
 
         # Re-enable rendering.
         pybullet.configureDebugVisualizer(pybullet.COV_ENABLE_RENDERING, 1)
@@ -418,12 +382,8 @@ class BlockPush(gym.Env):
             target_y = 0.2 + self._rng.uniform(low=-0.15, high=0.15)
             target_translation = np.array([target_x, target_y, 0.020])
 
-            target_sampled_angle = math.pi + self._rng.uniform(
-                low=-math.pi / 6, high=math.pi / 6
-            )
-            target_rotation = transform.Rotation.from_rotvec(
-                [0, 0, target_sampled_angle]
-            )
+            target_sampled_angle = math.pi + self._rng.uniform(low=-math.pi / 6, high=math.pi / 6)
+            target_rotation = transform.Rotation.from_rotvec([0, 0, target_sampled_angle])
 
             self._pybullet_client.resetBasePositionAndOrientation(
                 self._target_id,
@@ -438,9 +398,7 @@ class BlockPush(gym.Env):
             target_rotation = transform.Rotation.from_quat(target_orientation_quat)
             target_translation = np.array(target_translation)
 
-        self._target_pose = Pose3d(
-            rotation=target_rotation, translation=target_translation
-        )
+        self._target_pose = Pose3d(rotation=target_rotation, translation=target_translation)
 
         if reset_poses:
             self.step_simulation_to_stabilize()
@@ -461,13 +419,9 @@ class BlockPush(gym.Env):
     def _compute_goal_distance(self, state):
         goal_translation = self.get_goal_translation()
         if self._task != BlockTaskVariant.REACH:
-            goal_distance = np.linalg.norm(
-                state["block_translation"] - goal_translation[0:2]
-            )
+            goal_distance = np.linalg.norm(state["block_translation"] - goal_translation[0:2])
         else:
-            goal_distance = np.linalg.norm(
-                state["effector_translation"] - goal_translation[0:2]
-            )
+            goal_distance = np.linalg.norm(state["effector_translation"] - goal_translation[0:2])
         return goal_distance
 
     def _compute_reach_target(self, state):
@@ -475,16 +429,12 @@ class BlockPush(gym.Env):
         xy_target = state["target_translation"]
 
         xy_block_to_target = xy_target - xy_block
-        xy_dir_block_to_target = (xy_block_to_target) / np.linalg.norm(
-            xy_block_to_target
-        )
+        xy_dir_block_to_target = (xy_block_to_target) / np.linalg.norm(xy_block_to_target)
         self.reach_target_translation = xy_block + -1 * xy_dir_block_to_target * 0.05
 
     def _compute_state(self):
         effector_pose = self._robot.forward_kinematics()
-        block_position_and_orientation = (
-            self._pybullet_client.getBasePositionAndOrientation(self._block_ids[0])
-        )
+        block_position_and_orientation = self._pybullet_client.getBasePositionAndOrientation(self._block_ids[0])
         block_pose = Pose3d(
             rotation=transform.Rotation.from_quat(block_position_and_orientation[1]),
             translation=block_position_and_orientation[0],
@@ -512,9 +462,9 @@ class BlockPush(gym.Env):
         if self._abs_action:
             target_effector_translation = np.array([action[0], action[1], 0])
         else:
-            target_effector_translation = np.array(
-                self._target_effector_pose.translation
-            ) + np.array([action[0], action[1], 0])
+            target_effector_translation = np.array(self._target_effector_pose.translation) + np.array(
+                [action[0], action[1], 0]
+            )
 
         target_effector_translation[0:2] = np.clip(
             target_effector_translation[0:2],
@@ -522,9 +472,7 @@ class BlockPush(gym.Env):
             self.workspace_bounds[1],
         )
         target_effector_translation[-1] = self.effector_height
-        target_effector_pose = Pose3d(
-            rotation=EFFECTOR_DOWN_ROTATION, translation=target_effector_translation
-        )
+        target_effector_pose = Pose3d(rotation=EFFECTOR_DOWN_ROTATION, translation=target_effector_translation)
 
         self._set_robot_target_effector_pose(target_effector_pose)
 
@@ -537,9 +485,7 @@ class BlockPush(gym.Env):
                 # includes the actual step as well as any compute that happens in the
                 # caller thread (model inference, etc).
                 compute_time = (
-                    cur_time
-                    - self._last_loop_time
-                    - self._last_loop_frame_sleep_time * self._sim_steps_per_step
+                    cur_time - self._last_loop_time - self._last_loop_frame_sleep_time * self._sim_steps_per_step
                 )
                 # Use this to calculate the current frame's total sleep time to ensure
                 # that env.step runs at policy rate. This is an estimate since the
@@ -567,9 +513,7 @@ class BlockPush(gym.Env):
         state = self._compute_state()
 
         goal_distance = self._compute_goal_distance(state)
-        fraction_reduced_goal_distance = 1.0 - (
-            goal_distance / self._init_goal_distance
-        )
+        fraction_reduced_goal_distance = 1.0 - (goal_distance / self._init_goal_distance)
         if fraction_reduced_goal_distance > self.best_fraction_reduced_goal_dist:
             self.best_fraction_reduced_goal_dist = fraction_reduced_goal_distance
 
@@ -607,9 +551,7 @@ class BlockPush(gym.Env):
         data = self._render_camera(image_size=(image_size[0], image_size[1]))
         if mode == "human":
             if self.rendered_img is None:
-                self.rendered_img = plt.imshow(
-                    np.zeros((image_size[0], image_size[1], 4))
-                )
+                self.rendered_img = plt.imshow(np.zeros((image_size[0], image_size[1], 4)))
             else:
                 self.rendered_img.set_data(data)
             plt.draw()
@@ -646,9 +588,7 @@ class BlockPush(gym.Env):
 
         # Notes: 1) FOV is vertical FOV 2) aspect must be float
         aspect_ratio = image_size[1] / image_size[0]
-        projm = self._pybullet_client.computeProjectionMatrixFOV(
-            fovh, aspect_ratio, znear, zfar
-        )
+        projm = self._pybullet_client.computeProjectionMatrixFOV(fovh, aspect_ratio, znear, zfar)
 
         return viewm, projm, front_position, lookat, updir
 
@@ -695,9 +635,7 @@ class BlockPush(gym.Env):
             ),  # theta
         )
         if image_size is not None:
-            obs_dict["rgb"] = spaces.Box(
-                low=0, high=255, shape=(image_size[0], image_size[1], 3), dtype=np.uint8
-            )
+            obs_dict["rgb"] = spaces.Box(low=0, high=255, shape=(image_size[0], image_size[1], 3), dtype=np.uint8)
         return spaces.Dict(obs_dict)
 
     def get_pybullet_state(self):
@@ -721,22 +659,16 @@ class BlockPush(gym.Env):
         state["robot_end_effectors"] = []
         if self.robot.end_effector:
             state["robot_end_effectors"].append(
-                ObjState.get_bullet_state(
-                    self._pybullet_client, self.robot.end_effector
-                )
+                ObjState.get_bullet_state(self._pybullet_client, self.robot.end_effector)
             )
 
         state["targets"] = []
         if self._target_id:
-            state["targets"].append(
-                ObjState.get_bullet_state(self._pybullet_client, self._target_id)
-            )
+            state["targets"].append(ObjState.get_bullet_state(self._pybullet_client, self._target_id))
 
         state["objects"] = []
         for obj_id in self.get_obj_ids():
-            state["objects"].append(
-                ObjState.get_bullet_state(self._pybullet_client, obj_id)
-            )
+            state["objects"].append(ObjState.get_bullet_state(self._pybullet_client, obj_id))
 
         return state
 
@@ -812,20 +744,14 @@ class BlockPushNormalized(gym.Env):
             env_task = BlockTaskVariant.REACH
         else:
             raise ValueError("Unsupported task %s" % str(task))
-        self._env = BlockPush(
-            control_frequency, env_task, image_size, shared_memory, seed
-        )
+        self._env = BlockPush(control_frequency, env_task, image_size, shared_memory, seed)
         self.action_space = spaces.Box(low=-1, high=1, shape=(2,))
         self.observation_space = spaces.Dict(
             collections.OrderedDict(
                 effector_target_translation=spaces.Box(low=-1, high=1, shape=(2,)),
-                effector_target_to_block_translation=spaces.Box(
-                    low=-1, high=1, shape=(2,)
-                ),
+                effector_target_to_block_translation=spaces.Box(low=-1, high=1, shape=(2,)),
                 block_orientation_cos_sin=spaces.Box(low=-1, high=1, shape=(2,)),
-                effector_target_to_target_translation=spaces.Box(
-                    low=-1, high=1, shape=(2,)
-                ),
+                effector_target_to_target_translation=spaces.Box(low=-1, high=1, shape=(2,)),
                 target_orientation_cos_sin=spaces.Box(low=-1, high=1, shape=(2,)),
             )
         )
@@ -848,9 +774,7 @@ class BlockPushNormalized(gym.Env):
     def step(self, action):
         # The environment is normalized [mean-3*std, mean+3*std] -> [-1, 1].
         action = np.clip(action, a_min=-1.0, a_max=1.0)
-        state, reward, done, info = self._env.step(
-            self.calc_unnormalized_action(action)
-        )
+        state, reward, done, info = self._env.step(self.calc_unnormalized_action(action))
         state = self.calc_normalized_state(state)
         reward = reward * 100  # Keep returns in [0, 100]
         return state, reward, done, info
@@ -941,34 +865,26 @@ class BlockPushNormalized(gym.Env):
             EFFECTOR_TARGET_TO_BLOCK_TRANSLATION_MIN,
             EFFECTOR_TARGET_TO_BLOCK_TRANSLATION_MAX,
         )
-        block_translation = (
-            effector_target_to_block_translation + effector_target_translation
-        )
+        block_translation = effector_target_to_block_translation + effector_target_translation
         ori_cos_sin = cls._unnormalize(
             norm_state["block_orientation_cos_sin"],
             BLOCK_ORIENTATION_COS_SIN_MIN,
             BLOCK_ORIENTATION_COS_SIN_MAX,
         )
-        block_orientation = np.array(
-            [math.atan2(ori_cos_sin[1], ori_cos_sin[0])], np.float32
-        )
+        block_orientation = np.array([math.atan2(ori_cos_sin[1], ori_cos_sin[0])], np.float32)
 
         effector_target_to_target_translation = cls._unnormalize(
             norm_state["effector_target_to_target_translation"],
             EFFECTOR_TARGET_TO_TARGET_TRANSLATION_MIN,
             EFFECTOR_TARGET_TO_TARGET_TRANSLATION_MAX,
         )
-        target_translation = (
-            effector_target_to_target_translation + effector_target_translation
-        )
+        target_translation = effector_target_to_target_translation + effector_target_translation
         ori_cos_sin = cls._unnormalize(
             norm_state["target_orientation_cos_sin"],
             TARGET_ORIENTATION_COS_SIN_MIN,
             TARGET_ORIENTATION_COS_SIN_MAX,
         )
-        target_orientation = np.array(
-            [math.atan2(ori_cos_sin[1], ori_cos_sin[0])], np.float32
-        )
+        target_orientation = np.array([math.atan2(ori_cos_sin[1], ori_cos_sin[0])], np.float32)
 
         return collections.OrderedDict(
             block_translation=block_translation,
@@ -993,9 +909,7 @@ class BlockPushNormalized(gym.Env):
         return self._env.calc_camera_params(image_size)
 
     def _compute_state(self):
-        return self.calc_normalized_state(
-            self._env._compute_state()
-        )  # pylint: disable=protected-access
+        return self.calc_normalized_state(self._env._compute_state())  # pylint: disable=protected-access
 
 
 # Make sure we only register once to allow us to reload the module in colab for
@@ -1034,9 +948,7 @@ registration.register(
 registration.register(
     id="BlockPushRgbNormalized-v0",
     entry_point=BlockPushNormalized,
-    kwargs=dict(
-        task=BlockTaskVariant.PUSH_NORMALIZED, image_size=(IMAGE_HEIGHT, IMAGE_WIDTH)
-    ),
+    kwargs=dict(task=BlockTaskVariant.PUSH_NORMALIZED, image_size=(IMAGE_HEIGHT, IMAGE_WIDTH)),
     max_episode_steps=100,
 )
 registration.register(
@@ -1060,9 +972,7 @@ registration.register(
 registration.register(
     id="BlockReachRgbNormalized-v0",
     entry_point=BlockPushNormalized,
-    kwargs=dict(
-        task=BlockTaskVariant.REACH_NORMALIZED, image_size=(IMAGE_HEIGHT, IMAGE_WIDTH)
-    ),
+    kwargs=dict(task=BlockTaskVariant.REACH_NORMALIZED, image_size=(IMAGE_HEIGHT, IMAGE_WIDTH)),
     max_episode_steps=50,
 )
 

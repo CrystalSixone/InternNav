@@ -1,21 +1,21 @@
 if __name__ == "__main__":
-    import sys
-    import os
     import pathlib
+    import sys
 
     ROOT_DIR = str(pathlib.Path(__file__).parent.parent.parent)
     sys.path.append(ROOT_DIR)
 
-import multiprocessing
-import os
-import shutil
-import click
-import pathlib
-import h5py
-from tqdm import tqdm
 import collections
+import multiprocessing
+import pathlib
 import pickle
+import shutil
+
+import click
+import h5py
 from diffusion_policy.common.robomimic_util import RobomimicAbsoluteActionConverter
+from tqdm import tqdm
+
 
 def worker(x):
     path, idx, do_eval = x
@@ -26,6 +26,7 @@ def worker(x):
         abs_actions = converter.convert_idx(idx)
         info = dict()
     return abs_actions, info
+
 
 @click.command()
 @click.option('-i', '--input', required=True, help='input hdf5 path')
@@ -45,13 +46,13 @@ def main(input, output, eval_dir, num_workers):
         eval_dir = pathlib.Path(eval_dir).expanduser()
         assert eval_dir.parent.exists()
         do_eval = True
-    
+
     converter = RobomimicAbsoluteActionConverter(input)
 
     # run
     with multiprocessing.Pool(num_workers) as pool:
         results = pool.map(worker, [(input, i, do_eval) for i in range(len(converter))])
-    
+
     # save output
     print('Copying hdf5')
     shutil.copy(str(input), str(output))
@@ -62,7 +63,7 @@ def main(input, output, eval_dir, num_workers):
             abs_actions, info = results[i]
             demo = out_file[f'data/demo_{i}']
             demo['actions'][:] = abs_actions
-    
+
     # save eval
     if do_eval:
         eval_dir.mkdir(parents=False, exist_ok=True)
@@ -84,6 +85,7 @@ def main(input, output, eval_dir, num_workers):
                     metrics_dicts[m][k].append(v[m])
 
         from matplotlib import pyplot as plt
+
         plt.switch_backend('PDF')
 
         fig, ax = plt.subplots(1, len(metrics))
@@ -94,7 +96,7 @@ def main(input, output, eval_dir, num_workers):
                 axis.plot(value, label=key)
             axis.legend()
             axis.set_title(metrics[i])
-        fig.set_size_inches(10,4)
+        fig.set_size_inches(10, 4)
         fig.savefig(str(eval_dir.joinpath('error_stats.pdf')))
         fig.savefig(str(eval_dir.joinpath('error_stats.png')))
 

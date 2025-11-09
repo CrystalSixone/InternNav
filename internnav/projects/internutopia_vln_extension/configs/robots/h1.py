@@ -1,6 +1,8 @@
-from internutopia.macros import gm
 from internutopia_extension.configs.controllers import H1MoveBySpeedControllerCfg
-from internnav.projects.internutopia_vln_extension.configs.controllers.flash_controller import VlnMoveByFlashControllerCfg
+
+from internnav.projects.internutopia_vln_extension.configs.controllers.flash_controller import (
+    VlnMoveByFlashControllerCfg,
+)
 
 vln_move_by_speed_cfg = H1MoveBySpeedControllerCfg(
     name='vln_move_by_speed',

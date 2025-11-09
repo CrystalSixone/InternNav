@@ -19,15 +19,13 @@
 
 import collections
 import os
-import time
 from typing import Dict, Optional
 
 import gym
+import numpy as np
+from adept_envs.simulation.sim_robot import MujocoSimRobot, RenderMode
 from gym import spaces
 from gym.utils import seeding
-import numpy as np
-
-from adept_envs.simulation.sim_robot import MujocoSimRobot, RenderMode
 
 DEFAULT_RENDER_SIZE = 480
 
@@ -37,12 +35,13 @@ USE_DM_CONTROL = True
 class MujocoEnv(gym.Env):
     """Superclass for all MuJoCo environments."""
 
-    def __init__(self,
-                 model_path: str,
-                 frame_skip: int,
-                 camera_settings: Optional[Dict] = None,
-                 use_dm_backend: Optional[bool] = None,
-                 ):
+    def __init__(
+        self,
+        model_path: str,
+        frame_skip: int,
+        camera_settings: Optional[Dict] = None,
+        use_dm_backend: Optional[bool] = None,
+    ):
         """Initializes a new MuJoCo environment.
 
         Args:
@@ -55,21 +54,19 @@ class MujocoEnv(gym.Env):
         """
         self._seed()
         if not os.path.isfile(model_path):
-            raise IOError(
-                '[MujocoEnv]: Model path does not exist: {}'.format(model_path))
+            raise IOError('[MujocoEnv]: Model path does not exist: {}'.format(model_path))
         self.frame_skip = frame_skip
 
         self.sim_robot = MujocoSimRobot(
-            model_path,
-            use_dm_backend=use_dm_backend or USE_DM_CONTROL,
-            camera_settings=camera_settings)
+            model_path, use_dm_backend=use_dm_backend or USE_DM_CONTROL, camera_settings=camera_settings
+        )
         self.sim = self.sim_robot.sim
         self.model = self.sim_robot.model
         self.data = self.sim_robot.data
 
         self.metadata = {
             'render.modes': ['human', 'rgb_array', 'depth_array'],
-            'video.frames_per_second': int(np.round(1.0 / self.dt))
+            'video.frames_per_second': int(np.round(1.0 / self.dt)),
         }
         self.mujoco_render_frames = False
 
@@ -85,23 +82,23 @@ class MujocoEnv(gym.Env):
         # Define the action and observation spaces.
         # HACK: MJRL is still using gym 0.9.x so we can't provide a dtype.
         try:
-            self.action_space = spaces.Box(
-                act_lower, act_upper, dtype=np.float32)
+            self.action_space = spaces.Box(act_lower, act_upper, dtype=np.float32)
             if isinstance(observation, collections.Mapping):
-                self.observation_space = spaces.Dict({
-                k: spaces.Box(-np.inf, np.inf, shape=v.shape, dtype=np.float32) for k, v in observation.items()})
+                self.observation_space = spaces.Dict(
+                    {k: spaces.Box(-np.inf, np.inf, shape=v.shape, dtype=np.float32) for k, v in observation.items()}
+                )
             else:
                 self.obs_dim = np.sum([o.size for o in observation]) if type(observation) is tuple else observation.size
-                self.observation_space = spaces.Box(
-                -np.inf, np.inf, observation.shape, dtype=np.float32)
+                self.observation_space = spaces.Box(-np.inf, np.inf, observation.shape, dtype=np.float32)
 
         except TypeError:
             # Fallback case for gym 0.9.x
             self.action_space = spaces.Box(act_lower, act_upper)
-            assert not isinstance(observation, collections.Mapping), 'gym 0.9.x does not support dictionary observation.'
+            assert not isinstance(
+                observation, collections.Mapping
+            ), 'gym 0.9.x does not support dictionary observation.'
             self.obs_dim = np.sum([o.size for o in observation]) if type(observation) is tuple else observation.size
-            self.observation_space = spaces.Box(
-                -np.inf, np.inf, observation.shape)
+            self.observation_space = spaces.Box(-np.inf, np.inf, observation.shape)
 
     def seed(self, seed=None):  # Compatibility with new gym
         return self._seed(seed)
@@ -134,7 +131,7 @@ class MujocoEnv(gym.Env):
     def set_state(self, qpos, qvel):
         assert qpos.shape == (self.model.nq,) and qvel.shape == (self.model.nv,)
         # we are directly manipulating mujoco state here
-        data = self.sim.data # MjData
+        data = self.sim.data  # MjData
         for i in range(self.model.nq):
             data.qpos[i] = qpos[i]
         for i in range(self.model.nv):
@@ -158,11 +155,7 @@ class MujocoEnv(gym.Env):
             if self.mujoco_render_frames is True:
                 self.mj_render()
 
-    def render(self,
-               mode='human',
-               width=DEFAULT_RENDER_SIZE,
-               height=DEFAULT_RENDER_SIZE,
-               camera_id=-1):
+    def render(self, mode='human', width=DEFAULT_RENDER_SIZE, height=DEFAULT_RENDER_SIZE, camera_id=-1):
         """Renders the environment.
 
         Args:
@@ -181,12 +174,10 @@ class MujocoEnv(gym.Env):
             self.sim_robot.renderer.render_to_window()
         elif mode == 'rgb_array':
             assert width and height
-            return self.sim_robot.renderer.render_offscreen(
-                width, height, mode=RenderMode.RGB, camera_id=camera_id)
+            return self.sim_robot.renderer.render_offscreen(width, height, mode=RenderMode.RGB, camera_id=camera_id)
         elif mode == 'depth_array':
             assert width and height
-            return self.sim_robot.renderer.render_offscreen(
-                width, height, mode=RenderMode.DEPTH, camera_id=camera_id)
+            return self.sim_robot.renderer.render_offscreen(width, height, mode=RenderMode.DEPTH, camera_id=camera_id)
         else:
             raise NotImplementedError(mode)
 

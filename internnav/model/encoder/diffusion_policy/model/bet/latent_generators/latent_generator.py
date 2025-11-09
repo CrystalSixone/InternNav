@@ -1,8 +1,8 @@
 import abc
-import torch
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import diffusion_policy.model.bet.utils as utils
+import torch
 
 
 class AbstractLatentGenerator(abc.ABC, utils.SaveModule):
@@ -31,12 +31,9 @@ class AbstractLatentGenerator(abc.ABC, utils.SaveModule):
         latent: The sampled latent from the observation.
         loss: The loss of the latent generator.
         """
-        pass
 
     @abc.abstractmethod
-    def generate_latents(
-        self, seq_obses: torch.Tensor, seq_masks: torch.Tensor
-    ) -> torch.Tensor:
+    def generate_latents(self, seq_obses: torch.Tensor, seq_masks: torch.Tensor) -> torch.Tensor:
         """
         Given a batch of sequences of observations, generate a batch of sequences of latents.
 
@@ -47,7 +44,6 @@ class AbstractLatentGenerator(abc.ABC, utils.SaveModule):
         Outputs:
         seq_latents: Batch of sequences of latents of shape seq x batch x latent_dim.
         """
-        pass
 
     def get_optimizer(
         self, weight_decay: float, learning_rate: float, betas: Tuple[float, float]
@@ -55,9 +51,7 @@ class AbstractLatentGenerator(abc.ABC, utils.SaveModule):
         """
         Default optimizer class. Override this if you want to use a different optimizer.
         """
-        return torch.optim.Adam(
-            self.parameters(), lr=learning_rate, weight_decay=weight_decay, betas=betas
-        )
+        return torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay, betas=betas)
 
 
 class LatentGeneratorDataParallel(torch.nn.DataParallel):

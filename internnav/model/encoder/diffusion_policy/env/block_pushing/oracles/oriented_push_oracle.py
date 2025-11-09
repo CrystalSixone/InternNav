@@ -17,22 +17,19 @@
 
 import diffusion_policy.env.block_pushing.oracles.pushing_info as pushing_info_module
 import numpy as np
-from tf_agents.policies import py_policy
-from tf_agents.trajectories import policy_step
-from tf_agents.trajectories import time_step as ts
-from tf_agents.typing import types
 
 # Only used for debug visualization.
 import pybullet  # pylint: disable=unused-import
+from tf_agents.policies import py_policy
+from tf_agents.trajectories import policy_step
+from tf_agents.trajectories import time_step as ts
 
 
 class OrientedPushOracle(py_policy.PyPolicy):
     """Oracle for pushing task which orients the block then pushes it."""
 
     def __init__(self, env, action_noise_std=0.0):
-        super(OrientedPushOracle, self).__init__(
-            env.time_step_spec(), env.action_spec()
-        )
+        super(OrientedPushOracle, self).__init__(env.time_step_spec(), env.action_spec())
         self._env = env
         self._np_random_state = np.random.RandomState(0)
         self.phase = "move_to_pre_block"
@@ -59,9 +56,7 @@ class OrientedPushOracle(py_policy.PyPolicy):
         xy_ee = time_step.observation["effector_target_translation"][:2]
 
         xy_block_to_target = xy_target - xy_block
-        xy_dir_block_to_target = (xy_block_to_target) / np.linalg.norm(
-            xy_block_to_target
-        )
+        xy_dir_block_to_target = (xy_block_to_target) / np.linalg.norm(xy_block_to_target)
         theta_to_target = self.get_theta_from_vector(xy_dir_block_to_target)
 
         theta_error = theta_to_target - theta_block
@@ -104,9 +99,7 @@ class OrientedPushOracle(py_policy.PyPolicy):
         xy_delta = xy_delta_to_preblock
         return xy_delta, max_step_velocity
 
-    def _get_move_to_block(
-        self, xy_delta_to_nexttoblock, theta_threshold_to_orient, theta_error
-    ):
+    def _get_move_to_block(self, xy_delta_to_nexttoblock, theta_threshold_to_orient, theta_error):
         diff = np.linalg.norm(xy_delta_to_nexttoblock)
         if diff < 0.001:
             self.phase = "push_block"
@@ -119,9 +112,7 @@ class OrientedPushOracle(py_policy.PyPolicy):
         xy_delta = xy_delta_to_nexttoblock
         return xy_delta
 
-    def _get_push_block(
-        self, theta_error, theta_threshold_to_orient, xy_delta_to_touchingblock
-    ):
+    def _get_push_block(self, theta_error, theta_threshold_to_orient, xy_delta_to_touchingblock):
         # If need to reorient, go back to move_to_pre_block, move_to_block first.
         if theta_error > theta_threshold_to_orient:
             self.phase = "move_to_pre_block"
@@ -170,9 +161,7 @@ class OrientedPushOracle(py_policy.PyPolicy):
         info = self._get_action_info(time_step, block, target)
 
         if self.phase == "move_to_pre_block":
-            xy_delta, max_step_velocity = self._get_move_to_preblock(
-                info.xy_pre_block, info.xy_ee
-            )
+            xy_delta, max_step_velocity = self._get_move_to_preblock(info.xy_pre_block, info.xy_ee)
 
         if self.phase == "move_to_block":
             xy_delta = self._get_move_to_block(
@@ -226,9 +215,7 @@ class OrientedPushOracle(py_policy.PyPolicy):
     def _action(self, time_step, policy_state):
         if time_step.is_first():
             self.reset()
-        xy_delta = self._get_action_for_block_target(
-            time_step, block="block", target="target"
-        )
+        xy_delta = self._get_action_for_block_target(time_step, block="block", target="target")
         return policy_step.PolicyStep(action=np.asarray(xy_delta, dtype=np.float32))
 
 
@@ -236,9 +223,7 @@ class OrientedPushNormalizedOracle(py_policy.PyPolicy):
     """Oracle for pushing task which orients the block then pushes it."""
 
     def __init__(self, env):
-        super(OrientedPushNormalizedOracle, self).__init__(
-            env.time_step_spec(), env.action_spec()
-        )
+        super(OrientedPushNormalizedOracle, self).__init__(env.time_step_spec(), env.action_spec())
         self._oracle = OrientedPushOracle(env)
         self._env = env
 
@@ -247,12 +232,6 @@ class OrientedPushNormalizedOracle(py_policy.PyPolicy):
 
     def _action(self, time_step, policy_state):
         time_step = time_step._asdict()
-        time_step["observation"] = self._env.calc_unnormalized_state(
-            time_step["observation"]
-        )
-        step = self._oracle._action(
-            ts.TimeStep(**time_step), policy_state
-        )  # pylint: disable=protected-access
-        return policy_step.PolicyStep(
-            action=self._env.calc_normalized_action(step.action)
-        )
+        time_step["observation"] = self._env.calc_unnormalized_state(time_step["observation"])
+        step = self._oracle._action(ts.TimeStep(**time_step), policy_state)  # pylint: disable=protected-access
+        return policy_step.PolicyStep(action=self._env.calc_normalized_action(step.action))

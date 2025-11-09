@@ -1,14 +1,13 @@
 import os
 import random
 from collections import OrderedDict
-from typing import List, Optional
 
 import einops
 import numpy as np
 import torch
 import torch.nn as nn
-
 from torch.utils.data import random_split
+
 import wandb
 
 
@@ -97,8 +96,7 @@ class TrainWithLogger:
             iterator_log_name = f"{log_key[0]}{name_key[0]}".upper()
             iterator_log_component[iterator_log_name] = to_log
         postfix = ",".join(
-            "{}:{:.2e}".format(key, iterator_log_component[key])
-            for key in iterator_log_component.keys()
+            "{}:{:.2e}".format(key, iterator_log_component[key]) for key in iterator_log_component.keys()
         )
         if iterator is not None:
             iterator.set_postfix_str(postfix)
@@ -125,7 +123,5 @@ def split_datasets(dataset, train_fraction=0.95, random_seed=42):
         int(train_fraction * dataset_length),
         dataset_length - int(train_fraction * dataset_length),
     ]
-    train_set, val_set = random_split(
-        dataset, lengths, generator=torch.Generator().manual_seed(random_seed)
-    )
+    train_set, val_set = random_split(dataset, lengths, generator=torch.Generator().manual_seed(random_seed))
     return train_set, val_set

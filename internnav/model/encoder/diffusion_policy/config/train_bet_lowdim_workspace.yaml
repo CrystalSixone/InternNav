@@ -29,11 +29,11 @@ policy:
     num_bins: 24
     action_dim: ${action_dim}
     predict_offsets: True
-  
+
   obs_encoding_net:
     _target_: torch.nn.Identity
     output_dim: ${obs_dim}
-  
+
   state_prior:
     _target_: diffusion_policy.model.bet.latent_generators.mingpt.MinGPT
 

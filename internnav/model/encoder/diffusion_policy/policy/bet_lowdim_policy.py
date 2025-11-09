@@ -1,25 +1,27 @@
 from typing import Dict, Tuple
+
 import torch
 import torch.nn as nn
-from omegaconf import OmegaConf
 import torch.nn.functional as F
-
-from diffusion_policy.model.common.normalizer import LinearNormalizer
-from diffusion_policy.policy.base_lowdim_policy import BaseLowdimPolicy
 from diffusion_policy.model.bet.action_ae.discretizers.k_means import KMeansDiscretizer
 from diffusion_policy.model.bet.latent_generators.mingpt import MinGPT
 from diffusion_policy.model.bet.utils import eval_mode
+from diffusion_policy.model.common.normalizer import LinearNormalizer
+from diffusion_policy.policy.base_lowdim_policy import BaseLowdimPolicy
+
 
 class BETLowdimPolicy(BaseLowdimPolicy):
-    def __init__(self, 
-            action_ae: KMeansDiscretizer, 
-            obs_encoding_net: nn.Module, 
-            state_prior: MinGPT,
-            horizon,
-            n_action_steps,
-            n_obs_steps):
+    def __init__(
+        self,
+        action_ae: KMeansDiscretizer,
+        obs_encoding_net: nn.Module,
+        state_prior: MinGPT,
+        horizon,
+        n_action_steps,
+        n_obs_steps,
+    ):
         super().__init__()
-    
+
         self.normalizer = LinearNormalizer()
         self.action_ae = action_ae
         self.obs_encoding_net = obs_encoding_net
@@ -35,15 +37,15 @@ class BETLowdimPolicy(BaseLowdimPolicy):
         result: must include "action" key
         """
         assert 'obs' in obs_dict
-        assert 'past_action' not in obs_dict # not implemented yet
+        assert 'past_action' not in obs_dict  # not implemented yet
         nobs = self.normalizer['obs'].normalize(obs_dict['obs'])
         B, _, Do = nobs.shape
         To = self.n_obs_steps
         T = self.horizon
 
         # pad To to T
-        obs = torch.full((B,T,Do), -2, dtype=nobs.dtype, device=nobs.device)
-        obs[:,:To,:] = nobs[:,:To,:]
+        obs = torch.full((B, T, Do), -2, dtype=nobs.dtype, device=nobs.device)
+        obs[:, :To, :] = nobs[:, :To, :]
 
         # (B,T,Do)
         enc_obs = self.obs_encoding_net(obs)
@@ -52,9 +54,7 @@ class BETLowdimPolicy(BaseLowdimPolicy):
         latents, offsets = self.state_prior.generate_latents(enc_obs)
 
         # un-descritize
-        naction_pred = self.action_ae.decode_actions(
-            latent_action_batch=(latents, offsets)
-        )
+        naction_pred = self.action_ae.decode_actions(latent_action_batch=(latents, offsets))
         # (B,T,Da)
 
         # un-normalize
@@ -63,20 +63,17 @@ class BETLowdimPolicy(BaseLowdimPolicy):
         # get action
         start = To - 1
         end = start + self.n_action_steps
-        action = action_pred[:,start:end]
-        result = {
-            'action': action,
-            'action_pred': action_pred
-        }
+        action = action_pred[:, start:end]
+        result = {'action': action, 'action_pred': action_pred}
         return result
 
     # ========= training  ============
     def set_normalizer(self, normalizer: LinearNormalizer):
         self.normalizer.load_state_dict(normalizer.state_dict())
-    
+
     def fit_action_ae(self, input_actions: torch.Tensor):
         self.action_ae.fit_discretizer(input_actions=input_actions)
-    
+
     def get_latents(self, latent_collection_loader):
         training_latents = list()
         with eval_mode(self.action_ae, self.obs_encoding_net, no_grad=True):
@@ -99,13 +96,12 @@ class BETLowdimPolicy(BaseLowdimPolicy):
         return training_latents_tensor
 
     def get_optimizer(
-            self, weight_decay: float, learning_rate: float, betas: Tuple[float, float]
-        ) -> torch.optim.Optimizer:
+        self, weight_decay: float, learning_rate: float, betas: Tuple[float, float]
+    ) -> torch.optim.Optimizer:
         return self.state_prior.get_optimizer(
-                weight_decay=weight_decay, 
-                learning_rate=learning_rate, 
-                betas=tuple(betas))
-    
+            weight_decay=weight_decay, learning_rate=learning_rate, betas=tuple(betas)
+        )
+
     def compute_loss(self, batch):
         # normalize input
         assert 'valid_mask' not in batch
@@ -115,7 +111,7 @@ class BETLowdimPolicy(BaseLowdimPolicy):
 
         # mask out observations after n_obs_steps
         To = self.n_obs_steps
-        obs[:,To:,:] = -2 # (normal obs range [-1,1])
+        obs[:, To:, :] = -2  # (normal obs range [-1,1])
 
         enc_obs = self.obs_encoding_net(obs)
         latent = self.action_ae.encode_into_latent(action, enc_obs)

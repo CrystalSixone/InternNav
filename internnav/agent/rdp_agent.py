@@ -25,7 +25,6 @@ from internnav.model.utils.feature_extract import (
     extract_image_features,
     extract_instruction_tokens,
 )
-from internnav.utils import common_log_util
 from internnav.utils.common_log_util import common_logger as log
 
 

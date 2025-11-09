@@ -17,12 +17,10 @@
 
 import diffusion_policy.env.block_pushing.oracles.oriented_push_oracle as oriented_push_oracle_module
 import numpy as np
-from tf_agents.trajectories import policy_step
-from tf_agents.trajectories import time_step as ts
-from tf_agents.typing import types
 
 # Only used for debug visualization.
 import pybullet  # pylint: disable=unused-import
+from tf_agents.trajectories import policy_step
 
 
 class DiscontinuousOrientedPushOracle(oriented_push_oracle_module.OrientedPushOracle):
@@ -47,8 +45,7 @@ class DiscontinuousOrientedPushOracle(oriented_push_oracle_module.OrientedPushOr
 
         def _block_target_dist(block, target):
             dist = np.linalg.norm(
-                time_step.observation["%s_translation" % block]
-                - time_step.observation["%s_translation" % target]
+                time_step.observation["%s_translation" % block] - time_step.observation["%s_translation" % target]
             )
             return dist
 
@@ -59,9 +56,7 @@ class DiscontinuousOrientedPushOracle(oriented_push_oracle_module.OrientedPushOr
             self._has_switched = True
             self._current_target = "target2"
 
-        xy_delta = self._get_action_for_block_target(
-            time_step, block="block", target=self._current_target
-        )
+        xy_delta = self._get_action_for_block_target(time_step, block="block", target=self._current_target)
 
         if self._countdown > 0:
             xy_delta = np.zeros_like(xy_delta)

@@ -1,53 +1,56 @@
-from typing import Dict, List
-import torch
-import numpy as np
-import h5py
-from tqdm import tqdm
-import zarr
+import concurrent.futures
+import copy
+import multiprocessing
 import os
 import shutil
-import copy
-import json
-import hashlib
-from filelock import FileLock
-from threadpoolctl import threadpool_limits
-import concurrent.futures
-import multiprocessing
-from omegaconf import OmegaConf
+from typing import Dict
+
+import h5py
+import numpy as np
+import torch
+import zarr
+from diffusion_policy.codecs.imagecodecs_numcodecs import Jpeg2k, register_codecs
+from diffusion_policy.common.normalize_util import (
+    array_to_stats,
+    get_identity_normalizer_from_stat,
+    get_image_range_normalizer,
+    get_range_normalizer_from_stat,
+    robomimic_abs_action_only_dual_arm_normalizer_from_stat,
+    robomimic_abs_action_only_normalizer_from_stat,
+)
 from diffusion_policy.common.pytorch_util import dict_apply
-from diffusion_policy.dataset.base_dataset import BaseImageDataset, LinearNormalizer
-from diffusion_policy.model.common.normalizer import LinearNormalizer, SingleFieldLinearNormalizer
-from diffusion_policy.model.common.rotation_transformer import RotationTransformer
-from diffusion_policy.codecs.imagecodecs_numcodecs import register_codecs, Jpeg2k
 from diffusion_policy.common.replay_buffer import ReplayBuffer
 from diffusion_policy.common.sampler import SequenceSampler, get_val_mask
-from diffusion_policy.common.normalize_util import (
-    robomimic_abs_action_only_normalizer_from_stat,
-    robomimic_abs_action_only_dual_arm_normalizer_from_stat,
-    get_range_normalizer_from_stat,
-    get_image_range_normalizer,
-    get_identity_normalizer_from_stat,
-    array_to_stats
+from diffusion_policy.dataset.base_dataset import BaseImageDataset, LinearNormalizer
+from diffusion_policy.model.common.normalizer import (
+    LinearNormalizer,
+    SingleFieldLinearNormalizer,
 )
+from diffusion_policy.model.common.rotation_transformer import RotationTransformer
+from filelock import FileLock
+from threadpoolctl import threadpool_limits
+from tqdm import tqdm
+
 register_codecs()
 
+
 class RobomimicReplayImageDataset(BaseImageDataset):
-    def __init__(self,
-            shape_meta: dict,
-            dataset_path: str,
-            horizon=1,
-            pad_before=0,
-            pad_after=0,
-            n_obs_steps=None,
-            abs_action=False,
-            rotation_rep='rotation_6d', # ignored when abs_action=False
-            use_legacy_normalizer=False,
-            use_cache=False,
-            seed=42,
-            val_ratio=0.0
-        ):
-        rotation_transformer = RotationTransformer(
-            from_rep='axis_angle', to_rep=rotation_rep)
+    def __init__(
+        self,
+        shape_meta: dict,
+        dataset_path: str,
+        horizon=1,
+        pad_before=0,
+        pad_after=0,
+        n_obs_steps=None,
+        abs_action=False,
+        rotation_rep='rotation_6d',  # ignored when abs_action=False
+        use_legacy_normalizer=False,
+        use_cache=False,
+        seed=42,
+        val_ratio=0.0,
+    ):
+        rotation_transformer = RotationTransformer(from_rep='axis_angle', to_rep=rotation_rep)
 
         replay_buffer = None
         if use_cache:
@@ -61,32 +64,31 @@ class RobomimicReplayImageDataset(BaseImageDataset):
                         print('Cache does not exist. Creating!')
                         # store = zarr.DirectoryStore(cache_zarr_path)
                         replay_buffer = _convert_robomimic_to_replay(
-                            store=zarr.MemoryStore(), 
-                            shape_meta=shape_meta, 
-                            dataset_path=dataset_path, 
-                            abs_action=abs_action, 
-                            rotation_transformer=rotation_transformer)
+                            store=zarr.MemoryStore(),
+                            shape_meta=shape_meta,
+                            dataset_path=dataset_path,
+                            abs_action=abs_action,
+                            rotation_transformer=rotation_transformer,
+                        )
                         print('Saving cache to disk.')
                         with zarr.ZipStore(cache_zarr_path) as zip_store:
-                            replay_buffer.save_to_store(
-                                store=zip_store
-                            )
+                            replay_buffer.save_to_store(store=zip_store)
                     except Exception as e:
                         shutil.rmtree(cache_zarr_path)
                         raise e
                 else:
                     print('Loading cached ReplayBuffer from Disk.')
                     with zarr.ZipStore(cache_zarr_path, mode='r') as zip_store:
-                        replay_buffer = ReplayBuffer.copy_from_store(
-                            src_store=zip_store, store=zarr.MemoryStore())
+                        replay_buffer = ReplayBuffer.copy_from_store(src_store=zip_store, store=zarr.MemoryStore())
                     print('Loaded!')
         else:
             replay_buffer = _convert_robomimic_to_replay(
-                store=zarr.MemoryStore(), 
-                shape_meta=shape_meta, 
-                dataset_path=dataset_path, 
-                abs_action=abs_action, 
-                rotation_transformer=rotation_transformer)
+                store=zarr.MemoryStore(),
+                shape_meta=shape_meta,
+                dataset_path=dataset_path,
+                abs_action=abs_action,
+                rotation_transformer=rotation_transformer,
+            )
 
         rgb_keys = list()
         lowdim_keys = list()
@@ -97,7 +99,7 @@ class RobomimicReplayImageDataset(BaseImageDataset):
                 rgb_keys.append(key)
             elif type == 'low_dim':
                 lowdim_keys.append(key)
-        
+
         # for key in rgb_keys:
         #     replay_buffer[key].compressor.numthreads=1
 
@@ -107,19 +109,17 @@ class RobomimicReplayImageDataset(BaseImageDataset):
             for key in rgb_keys + lowdim_keys:
                 key_first_k[key] = n_obs_steps
 
-        val_mask = get_val_mask(
-            n_episodes=replay_buffer.n_episodes, 
-            val_ratio=val_ratio,
-            seed=seed)
+        val_mask = get_val_mask(n_episodes=replay_buffer.n_episodes, val_ratio=val_ratio, seed=seed)
         train_mask = ~val_mask
         sampler = SequenceSampler(
-            replay_buffer=replay_buffer, 
+            replay_buffer=replay_buffer,
             sequence_length=horizon,
-            pad_before=pad_before, 
+            pad_before=pad_before,
             pad_after=pad_after,
             episode_mask=train_mask,
-            key_first_k=key_first_k)
-        
+            key_first_k=key_first_k,
+        )
+
         self.replay_buffer = replay_buffer
         self.sampler = sampler
         self.shape_meta = shape_meta
@@ -136,12 +136,12 @@ class RobomimicReplayImageDataset(BaseImageDataset):
     def get_validation_dataset(self):
         val_set = copy.copy(self)
         val_set.sampler = SequenceSampler(
-            replay_buffer=self.replay_buffer, 
+            replay_buffer=self.replay_buffer,
             sequence_length=self.horizon,
-            pad_before=self.pad_before, 
+            pad_before=self.pad_before,
             pad_after=self.pad_after,
-            episode_mask=~self.train_mask
-            )
+            episode_mask=~self.train_mask,
+        )
         val_set.train_mask = ~self.train_mask
         return val_set
 
@@ -156,7 +156,7 @@ class RobomimicReplayImageDataset(BaseImageDataset):
                 this_normalizer = robomimic_abs_action_only_dual_arm_normalizer_from_stat(stat)
             else:
                 this_normalizer = robomimic_abs_action_only_normalizer_from_stat(stat)
-            
+
             if self.use_legacy_normalizer:
                 this_normalizer = normalizer_from_stat(stat)
         else:
@@ -205,8 +205,7 @@ class RobomimicReplayImageDataset(BaseImageDataset):
             # move channel last to channel first
             # T,H,W,C
             # convert uint8 image to float32
-            obs_dict[key] = np.moveaxis(data[key][T_slice],-1,1
-                ).astype(np.float32) / 255.
+            obs_dict[key] = np.moveaxis(data[key][T_slice], -1, 1).astype(np.float32) / 255.0
             # T,C,H,W
             del data[key]
         for key in self.lowdim_keys:
@@ -215,7 +214,7 @@ class RobomimicReplayImageDataset(BaseImageDataset):
 
         torch_data = {
             'obs': dict_apply(obs_dict, torch.from_numpy),
-            'action': torch.from_numpy(data['action'].astype(np.float32))
+            'action': torch.from_numpy(data['action'].astype(np.float32)),
         }
         return torch_data
 
@@ -226,25 +225,24 @@ def _convert_actions(raw_actions, abs_action, rotation_transformer):
         is_dual_arm = False
         if raw_actions.shape[-1] == 14:
             # dual arm
-            raw_actions = raw_actions.reshape(-1,2,7)
+            raw_actions = raw_actions.reshape(-1, 2, 7)
             is_dual_arm = True
 
-        pos = raw_actions[...,:3]
-        rot = raw_actions[...,3:6]
-        gripper = raw_actions[...,6:]
+        pos = raw_actions[..., :3]
+        rot = raw_actions[..., 3:6]
+        gripper = raw_actions[..., 6:]
         rot = rotation_transformer.forward(rot)
-        raw_actions = np.concatenate([
-            pos, rot, gripper
-        ], axis=-1).astype(np.float32)
-    
+        raw_actions = np.concatenate([pos, rot, gripper], axis=-1).astype(np.float32)
+
         if is_dual_arm:
-            raw_actions = raw_actions.reshape(-1,20)
+            raw_actions = raw_actions.reshape(-1, 20)
         actions = raw_actions
     return actions
 
 
-def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, rotation_transformer, 
-        n_workers=None, max_inflight_tasks=None):
+def _convert_robomimic_to_replay(
+    store, shape_meta, dataset_path, abs_action, rotation_transformer, n_workers=None, max_inflight_tasks=None
+):
     if n_workers is None:
         n_workers = multiprocessing.cpu_count()
     if max_inflight_tasks is None:
@@ -262,7 +260,7 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
             rgb_keys.append(key)
         elif type == 'low_dim':
             lowdim_keys.append(key)
-    
+
     root = zarr.group(store)
     data_group = root.require_group('data', overwrite=True)
     meta_group = root.require_group('meta', overwrite=True)
@@ -280,8 +278,7 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
             episode_ends.append(episode_end)
         n_steps = episode_ends[-1]
         episode_starts = [0] + episode_ends[:-1]
-        _ = meta_group.array('episode_ends', episode_ends, 
-            dtype=np.int64, compressor=None, overwrite=True)
+        _ = meta_group.array('episode_ends', episode_ends, dtype=np.int64, compressor=None, overwrite=True)
 
         # save lowdim data
         for key in tqdm(lowdim_keys + ['action'], desc="Loading lowdim data"):
@@ -295,9 +292,7 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
             this_data = np.concatenate(this_data, axis=0)
             if key == 'action':
                 this_data = _convert_actions(
-                    raw_actions=this_data,
-                    abs_action=abs_action,
-                    rotation_transformer=rotation_transformer
+                    raw_actions=this_data, abs_action=abs_action, rotation_transformer=rotation_transformer
                 )
                 assert this_data.shape == (n_steps,) + tuple(shape_meta['action']['shape'])
             else:
@@ -308,9 +303,9 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
                 shape=this_data.shape,
                 chunks=this_data.shape,
                 compressor=None,
-                dtype=this_data.dtype
+                dtype=this_data.dtype,
             )
-        
+
         def img_copy(zarr_arr, zarr_idx, hdf5_arr, hdf5_idx):
             try:
                 zarr_arr[zarr_idx] = hdf5_arr[hdf5_idx]
@@ -319,22 +314,22 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
                 return True
             except Exception as e:
                 return False
-        
-        with tqdm(total=n_steps*len(rgb_keys), desc="Loading image data", mininterval=1.0) as pbar:
+
+        with tqdm(total=n_steps * len(rgb_keys), desc="Loading image data", mininterval=1.0) as pbar:
             # one chunk per thread, therefore no synchronization needed
             with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
                 futures = set()
                 for key in rgb_keys:
                     data_key = 'obs/' + key
                     shape = tuple(shape_meta['obs'][key]['shape'])
-                    c,h,w = shape
+                    c, h, w = shape
                     this_compressor = Jpeg2k(level=50)
                     img_arr = data_group.require_dataset(
                         name=key,
-                        shape=(n_steps,h,w,c),
-                        chunks=(1,h,w,c),
+                        shape=(n_steps, h, w, c),
+                        chunks=(1, h, w, c),
                         compressor=this_compressor,
-                        dtype=np.uint8
+                        dtype=np.uint8,
                     )
                     for episode_idx in range(len(demos)):
                         demo = demos[f'demo_{episode_idx}']
@@ -342,17 +337,16 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
                         for hdf5_idx in range(hdf5_arr.shape[0]):
                             if len(futures) >= max_inflight_tasks:
                                 # limit number of inflight tasks
-                                completed, futures = concurrent.futures.wait(futures, 
-                                    return_when=concurrent.futures.FIRST_COMPLETED)
+                                completed, futures = concurrent.futures.wait(
+                                    futures, return_when=concurrent.futures.FIRST_COMPLETED
+                                )
                                 for f in completed:
                                     if not f.result():
                                         raise RuntimeError('Failed to encode image!')
                                 pbar.update(len(completed))
 
                             zarr_idx = episode_starts[episode_idx] + hdf5_idx
-                            futures.add(
-                                executor.submit(img_copy, 
-                                    img_arr, zarr_idx, hdf5_arr, hdf5_idx))
+                            futures.add(executor.submit(img_copy, img_arr, zarr_idx, hdf5_arr, hdf5_idx))
                 completed, futures = concurrent.futures.wait(futures)
                 for f in completed:
                     if not f.result():
@@ -362,12 +356,9 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
     replay_buffer = ReplayBuffer(root)
     return replay_buffer
 
+
 def normalizer_from_stat(stat):
     max_abs = np.maximum(stat['max'].max(), np.abs(stat['min']).max())
-    scale = np.full_like(stat['max'], fill_value=1/max_abs)
+    scale = np.full_like(stat['max'], fill_value=1 / max_abs)
     offset = np.zeros_like(stat['max'])
-    return SingleFieldLinearNormalizer.create_manual(
-        scale=scale,
-        offset=offset,
-        input_stats_dict=stat
-    )
+    return SingleFieldLinearNormalizer.create_manual(scale=scale, offset=offset, input_stats_dict=stat)

@@ -1,7 +1,9 @@
 from internnav.evaluator.utils.common import check_robot_fall
 from internnav.evaluator.utils.stuck_checker import StuckChecker
+from internnav.projects.internutopia_vln_extension.configs.tasks.vln_eval_task import (
+    VLNEvalTaskCfg,
+)
 from internnav.utils.common_log_util import common_logger as log
-from internnav.projects.internutopia_vln_extension.configs.tasks.vln_eval_task import VLNEvalTaskCfg
 
 
 def get_action_state(obs, action_name):
@@ -11,7 +13,7 @@ def get_action_state(obs, action_name):
 
 
 class DoneChecker:
-    def __init__(self, offset, robot, config:VLNEvalTaskCfg):
+    def __init__(self, offset, robot, config: VLNEvalTaskCfg):
         self._offset = offset
         self.stuck_checker = StuckChecker(offset, robot.articulation)
         self.total_max_step = config.max_step

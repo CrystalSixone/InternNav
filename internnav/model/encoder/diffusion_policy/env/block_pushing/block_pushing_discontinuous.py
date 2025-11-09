@@ -17,17 +17,16 @@
 import collections
 import enum
 import math
-from typing import List, Optional
 
-from gym import spaces
-from gym.envs import registration
+import numpy as np
+import pybullet
+import pybullet_utils.bullet_client as bullet_client
 from diffusion_policy.env.block_pushing import block_pushing
 from diffusion_policy.env.block_pushing.utils import utils_pybullet
 from diffusion_policy.env.block_pushing.utils.pose3d import Pose3d
-import numpy as np
+from gym import spaces
+from gym.envs import registration
 from scipy.spatial import transform
-import pybullet
-import pybullet_utils.bullet_client as bullet_client
 
 ZONE2_URDF_PATH = "third_party/py/envs/assets/zone2.urdf"
 
@@ -104,14 +103,10 @@ class BlockPushDiscontinuous(block_pushing.BlockPush):
         self._target_ids = []
         for _ in [block_pushing.ZONE_URDF_PATH, ZONE2_URDF_PATH]:
             self._target_ids.append(
-                utils_pybullet.load_urdf(
-                    self._pybullet_client, target_urdf_path, useFixedBase=True
-                )
+                utils_pybullet.load_urdf(self._pybullet_client, target_urdf_path, useFixedBase=True)
             )
         self._block_ids = [
-            utils_pybullet.load_urdf(
-                self._pybullet_client, block_pushing.BLOCK_URDF_PATH, useFixedBase=False
-            )
+            utils_pybullet.load_urdf(self._pybullet_client, block_pushing.BLOCK_URDF_PATH, useFixedBase=False)
         ]
 
         # Re-enable rendering.
@@ -144,20 +139,14 @@ class BlockPushDiscontinuous(block_pushing.BlockPush):
                     dist = np.linalg.norm(target_translation[0] - avoid[0])
                     if dist > MIN_TARGET_DIST:
                         break
-            target_sampled_angle = math.pi + self._rng.uniform(
-                low=-math.pi / 6, high=math.pi / 6
-            )
-            target_rotation = transform.Rotation.from_rotvec(
-                [0, 0, target_sampled_angle]
-            )
+            target_sampled_angle = math.pi + self._rng.uniform(low=-math.pi / 6, high=math.pi / 6)
+            target_rotation = transform.Rotation.from_rotvec([0, 0, target_sampled_angle])
             self._pybullet_client.resetBasePositionAndOrientation(
                 self._target_ids[idx],
                 target_translation.tolist(),
                 target_rotation.as_quat().tolist(),
             )
-            self._target_poses[idx] = Pose3d(
-                rotation=target_rotation, translation=target_translation
-            )
+            self._target_poses[idx] = Pose3d(rotation=target_rotation, translation=target_translation)
 
         try_idx = 0
         while True:
@@ -165,10 +154,7 @@ class BlockPushDiscontinuous(block_pushing.BlockPush):
             _reset_target_pose(0)
             # Choose the second target, avoiding the first.
             _reset_target_pose(1, avoid=self._target_poses[0].translation)
-            dist = np.linalg.norm(
-                self._target_poses[0].translation[0]
-                - self._target_poses[1].translation[0]
-            )
+            dist = np.linalg.norm(self._target_poses[0].translation[0] - self._target_poses[1].translation[0])
             if dist > MIN_TARGET_DIST:
                 break
             try_idx += 1
@@ -216,9 +202,7 @@ class BlockPushDiscontinuous(block_pushing.BlockPush):
 
     def _compute_state(self):
         effector_pose = self._robot.forward_kinematics()
-        block_position_and_orientation = (
-            self._pybullet_client.getBasePositionAndOrientation(self._block_ids[0])
-        )
+        block_position_and_orientation = self._pybullet_client.getBasePositionAndOrientation(self._block_ids[0])
         block_pose = Pose3d(
             rotation=transform.Rotation.from_quat(block_position_and_orientation[1]),
             translation=block_position_and_orientation[0],
@@ -254,19 +238,13 @@ class BlockPushDiscontinuous(block_pushing.BlockPush):
 
     def dist(self, state, target):
         # Reward is 1. blocks is inside any target.
-        return np.linalg.norm(
-            state["block_translation"] - state["%s_translation" % target]
-        )
+        return np.linalg.norm(state["block_translation"] - state["%s_translation" % target])
 
     def _get_reward(self, state):
         """Reward is 1.0 if agent hits both goals and stays at second."""
         # This also statefully updates these values.
-        self.min_dist_to_first_goal = min(
-            self.dist(state, "target"), self.min_dist_to_first_goal
-        )
-        self.min_dist_to_second_goal = min(
-            self.dist(state, "target2"), self.min_dist_to_second_goal
-        )
+        self.min_dist_to_first_goal = min(self.dist(state, "target"), self.min_dist_to_first_goal)
+        self.min_dist_to_second_goal = min(self.dist(state, "target2"), self.min_dist_to_second_goal)
 
         def _reward(thresh):
             reward_first = True if self.min_dist_to_first_goal < thresh else False
@@ -315,9 +293,7 @@ class BlockPushDiscontinuous(block_pushing.BlockPush):
             ),  # theta
         )
         if image_size is not None:
-            obs_dict["rgb"] = spaces.Box(
-                low=0, high=255, shape=(image_size[0], image_size[1], 3), dtype=np.uint8
-            )
+            obs_dict["rgb"] = spaces.Box(low=0, high=255, shape=(image_size[0], image_size[1], 3), dtype=np.uint8)
         return spaces.Dict(obs_dict)
 
 

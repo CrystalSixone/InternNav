@@ -15,13 +15,11 @@
 
 """Reach oracle."""
 import numpy as np
-from tf_agents.policies import py_policy
-from tf_agents.trajectories import policy_step
-from tf_agents.trajectories import time_step as ts
-from tf_agents.typing import types
 
 # Only used for debug visualization.
 import pybullet  # pylint: disable=unused-import
+from tf_agents.policies import py_policy
+from tf_agents.trajectories import policy_step
 
 
 class ReachOracle(py_policy.PyPolicy):
@@ -48,9 +46,7 @@ class ReachOracle(py_policy.PyPolicy):
         xy_delta = xy_pre_block - xy_ee
 
         if self._block_pushing_oracles_action_std != 0.0:
-            xy_delta += (
-                self._np_random_state.randn(2) * self._block_pushing_oracles_action_std
-            )
+            xy_delta += self._np_random_state.randn(2) * self._block_pushing_oracles_action_std
 
         max_step_distance = max_step_velocity * (1 / self._env.get_control_frequency())
         length = np.linalg.norm(xy_delta)

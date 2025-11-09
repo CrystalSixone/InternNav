@@ -1,12 +1,13 @@
-import sys
 import os
+import sys
+
 # hack to import adept envs
 ADEPT_DIR = os.path.join(os.path.dirname(__file__), 'relay_policy_learning', 'adept_envs')
 sys.path.append(ADEPT_DIR)
 
 import logging
+
 import numpy as np
-import adept_envs
 from adept_envs.franka.kitchen_multitask_v0 import KitchenTaskRelaxV1
 
 OBS_ELEMENT_INDICES = {
@@ -47,15 +48,9 @@ class KitchenBase(KitchenTaskRelaxV1):
     REMOVE_TASKS_WHEN_COMPLETE = True
     TERMINATE_ON_TASK_COMPLETE = True
     TERMINATE_ON_WRONG_COMPLETE = False
-    COMPLETE_IN_ANY_ORDER = (
-        True  # This allows for the tasks to be completed in arbitrary order.
-    )
+    COMPLETE_IN_ANY_ORDER = True  # This allows for the tasks to be completed in arbitrary order.
 
-    def __init__(
-        self, dataset_url=None, ref_max_score=None, ref_min_score=None, 
-        use_abs_action=False,
-        **kwargs
-    ):
+    def __init__(self, dataset_url=None, ref_max_score=None, ref_min_score=None, use_abs_action=False, **kwargs):
         self.tasks_to_complete = list(self.TASK_ELEMENTS)
         self.goal_masking = True
         super(KitchenBase, self).__init__(use_abs_action=use_abs_action, **kwargs)
@@ -86,23 +81,15 @@ class KitchenBase(KitchenTaskRelaxV1):
         reward = 0.0
         next_q_obs = obs_dict["qp"]
         next_obj_obs = obs_dict["obj_qp"]
-        next_goal = self._get_task_goal(
-            task=self.TASK_ELEMENTS, actually_return_goal=True
-        )  # obs_dict['goal']
+        next_goal = self._get_task_goal(task=self.TASK_ELEMENTS, actually_return_goal=True)  # obs_dict['goal']
         idx_offset = len(next_q_obs)
         completions = []
         all_completed_so_far = True
         for element in self.tasks_to_complete:
             element_idx = OBS_ELEMENT_INDICES[element]
-            distance = np.linalg.norm(
-                next_obj_obs[..., element_idx - idx_offset] - next_goal[element_idx]
-            )
+            distance = np.linalg.norm(next_obj_obs[..., element_idx - idx_offset] - next_goal[element_idx])
             complete = distance < BONUS_THRESH
-            condition = (
-                complete and all_completed_so_far
-                if not self.COMPLETE_IN_ANY_ORDER
-                else complete
-            )
+            condition = complete and all_completed_so_far if not self.COMPLETE_IN_ANY_ORDER else complete
             if condition:  # element == self.tasks_to_complete[0]:
                 print("Task {} completed!".format(element))
                 completions.append(element)
@@ -128,9 +115,7 @@ class KitchenBase(KitchenTaskRelaxV1):
                 if complete:
                     done = True
                     break
-        env_info["completed_tasks"] = set(self.TASK_ELEMENTS) - set(
-            self.tasks_to_complete
-        )
+        env_info["completed_tasks"] = set(self.TASK_ELEMENTS) - set(self.tasks_to_complete)
         return obs, reward, done, env_info
 
     def get_goal(self):

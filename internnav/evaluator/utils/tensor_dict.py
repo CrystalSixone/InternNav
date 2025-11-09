@@ -53,12 +53,10 @@ class TensorDict(Dict[str, Union['TensorDict', torch.Tensor]]):
         return res
 
     @overload
-    def __getitem__(self, index: str) -> Union['TensorDict', torch.Tensor]:
-        ...
+    def __getitem__(self, index: str) -> Union['TensorDict', torch.Tensor]: ...
 
     @overload
-    def __getitem__(self, index: TensorIndexType) -> 'TensorDict':
-        ...
+    def __getitem__(self, index: TensorIndexType) -> 'TensorDict': ...
 
     def __getitem__(self, index: Union[str, TensorIndexType]) -> Union['TensorDict', torch.Tensor]:
         if isinstance(index, str):
@@ -72,8 +70,7 @@ class TensorDict(Dict[str, Union['TensorDict', torch.Tensor]]):
         index: str,
         value: Union[TensorLike, 'TensorDict', DictTree],
         strict: bool = True,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def set(
@@ -81,8 +78,7 @@ class TensorDict(Dict[str, Union['TensorDict', torch.Tensor]]):
         index: TensorIndexType,
         value: Union['TensorDict', DictTree],
         strict: bool = True,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def set(
         self,

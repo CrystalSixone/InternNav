@@ -16,7 +16,7 @@ shape_meta: &shape_meta
       shape: [4]
     robot0_gripper_qpos:
       shape: [2]
-  action: 
+  action:
     shape: [7]
 
 task_name: &task_name square

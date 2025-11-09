@@ -34,7 +34,7 @@ policy:
     kernel_size: 5
     n_groups: 8
     cond_predict_scale: True
-  
+
   noise_scheduler:
     _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
     num_train_timesteps: 100

@@ -15,8 +15,6 @@
 
 
 import os
-from typing import Optional
-import torch
 
 import transformers
 from transformers.trainer import (
@@ -76,7 +74,7 @@ class BaseTrainer(transformers.Trainer):
     def save_model(self, output_dir, state_dict=None, **kwargs):
         """
         save model to specified directory
-        
+
         handle DDP wrapped model
         """
         # check if it is a DDP wrapped model
@@ -85,17 +83,17 @@ class BaseTrainer(transformers.Trainer):
             model_to_save = self.model.module
         else:
             model_to_save = self.model
-        
+
         # ensure the output directory exists
         os.makedirs(output_dir, exist_ok=True)
-        
+
         # save model
         model_to_save.save_pretrained(output_dir, state_dict=state_dict)
-        
+
         # save tokenizer (if any)
         if self.tokenizer is not None:
             self.tokenizer.save_pretrained(output_dir)
-        
+
         # save trainer state
         # torch.save(self.state_dict(), os.path.join(output_dir, "trainer_state.pt"))
         print(f"Saving model to {output_dir} (is DDP: {hasattr(self.model, 'module')})")
@@ -119,4 +117,6 @@ class BaseTrainer(transformers.Trainer):
         if resume_from_checkpoint is not None:
             # In case of repeating the find_executable_batch_size, set `self._train_batch_size` properly
             self.state = TrainerState.load_from_json(os.path.join(resume_from_checkpoint, TRAINER_STATE_NAME))
-        return super().train(resume_from_checkpoint, trial, ignore_keys_for_eval, **kwargs)#这里会调用transformer中的train()
+        return super().train(
+            resume_from_checkpoint, trial, ignore_keys_for_eval, **kwargs
+        )  # 这里会调用transformer中的train()
