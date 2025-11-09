@@ -589,6 +589,9 @@ class RDPNet(PreTrainedModel):
                 # Add noise to the clean images according to the noise magnitude at each diffusion iterationd
                 # Sample noise to add to actions
                 naction = observations['actions']  # which has been normalized
+                # Ensure all tensors are on the same device
+                naction = naction.to(device)
+                timesteps = timesteps.to(device)
                 noise = torch.randn(naction.shape, device=device)
                 noisy_action = self.noise_scheduler.add_noise(naction, noise, timesteps)
             else:

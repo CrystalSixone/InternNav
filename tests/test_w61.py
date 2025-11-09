@@ -1,0 +1,19 @@
+import os, sys
+import json
+import gzip
+
+raw_file = '/cpfs/user/wangliuyi/code/internnav_vlnverse/data/vln_pe/raw_data/vlnverse/mixed_splits/test/test.json.gz'
+target_dir = 'data/vln_pe/raw_data/vlnverse/mixed_splits/test_w61'
+
+os.makedirs(target_dir, exist_ok=True)
+
+with gzip.open(raw_file, 'rt', encoding='utf-8') as f:
+    data = json.load(f)
+
+new_data = {'episodes': []}
+for episode in data['episodes']:
+    if episode['scene_id'] == 'vlnverse/kujiale_0003':
+        new_data['episodes'].append(episode)
+
+with gzip.open(os.path.join(target_dir, 'test_w61.json.gz'), 'wt', encoding='utf-8') as f:
+    json.dump(new_data, f)

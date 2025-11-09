@@ -43,7 +43,11 @@ class ResumablePathKeyDataloader(BasePathKeyDataloader):
 
         filtered_target_path_key_list = []
         for path_key in self.path_key_data.keys():
-            trajectory_id = int(path_key.split('_')[0])
+            try:
+                trajectory_id = int(path_key.split('_')[0])
+            except Exception as e:
+                # for vlnverse
+                trajectory_id = path_key.split('_')[-2]+'_'+path_key.split('_')[-1]
             if trajectory_id in skip_list:
                 continue
             with database.begin() as txn:

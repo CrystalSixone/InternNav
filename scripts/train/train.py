@@ -12,6 +12,7 @@ import torch.distributed as dist
 import tyro
 from pydantic import BaseModel
 from transformers import TrainerCallback, TrainingArguments
+import wandb
 
 from internnav.dataset.cma_lerobot_dataset import CMALerobotDataset, cma_collate_fn
 from internnav.dataset.navdp_dataset_lerobot import NavDP_Base_Datset, navdp_collate_fn
@@ -230,6 +231,8 @@ def main(config, model_class, model_config_class):
             collate_fn = navdp_collate_fn
 
         # ------------ training args ------------
+        if config.il.report_to == 'wandb':
+            wandb.init(project='vlnverse', name=config.name)
         training_args = TrainingArguments(
             output_dir=config.output_dir,
             run_name=config.name,
