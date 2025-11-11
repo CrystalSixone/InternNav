@@ -50,22 +50,24 @@ seq2seq_clip_cfg = ModelCfg(
     ),
 )
 
-seq2seq_eval_cfg = ModelCfg(
+seq2seq_clip_eval_cfg = ModelCfg(
     policy_name='Seq2Seq_Policy',
     max_step=200,
     len_traj_act=4,
-    instruction_encoder=InstructionEncoder(
-        sensor_uuid='instruction',
-        vocab_size=2504,
-        use_pretrained_embeddings=True,
-        embedding_file='data/vln_pe/raw_data/r2r/embeddings.json.gz',
-        dataset_vocab='data/vln_pe/raw_data/r2r/train/train.json.gz',
-        fine_tune_embeddings=False,
-        embedding_size=50,
-        hidden_size=128,
-        rnn_type='LSTM',
-        final_state_only=True,
-        bidirectional=False,
+    text_encoder=TextEncoder(
+        load_model=True,
+        max_length=248,
+        update_text_encoder=False,
+        type='clip-long',
+        model_name='clip-long',
+        model_path='checkpoints/clip-long/longclip-B.pt',
+        num_l_layers=6,
+        hidden_size=512,
+        vocab_size=50265,
+        embedding_size=512,
+        sot_token=49406,
+        eot_token=49407,
+        pad_token=0,
     ),
     rgb_encoder=RgbEncoder(cnn_type='TorchVisionResNet50', output_size=256, trainable=False),
     depth_encoder=DepthEncoder(

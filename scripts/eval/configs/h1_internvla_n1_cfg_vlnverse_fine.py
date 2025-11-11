@@ -43,7 +43,7 @@ eval_cfg = EvalCfg(
         },
     ),
     task=TaskCfg(
-        task_name='20251111-internnav-N1-vlnverse-fine',
+        task_name='20251111-internnav-N1-vlnverse-fine-DLC',
         task_settings={
             'env_num': 1,
             'use_distributed': False,  # If the others setting in task_settings, please set use_distributed = False.

@@ -4,7 +4,7 @@ source /root/miniconda3/etc/profile.d/conda.sh
 conda activate internutopia
 
 # CONFIG=scripts/eval/configs/h1_internvla_n1_cfg.py
-export CUDA_VISIBLE_DEVICES=5
+export CUDA_VISIBLE_DEVICES=1
 CONFIG=scripts/eval/configs/h1_rdp_cfg.py
 
 while [[ $# -gt 0 ]]; do
