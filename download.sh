@@ -1,4 +1,4 @@
-export HF_ENDPOINT=https://hf-mirror.com
+# export HF_ENDPOINT=https://hf-mirror.com
 
 # 重试下载，直到成功
 RETRY_DELAY=10  # 重试间隔（秒）
@@ -8,10 +8,12 @@ retry_count=0
 while true; do
   echo "开始下载... (尝试次数: $((retry_count + 1)))"
   
-  huggingface-cli download billzhao1030/vlnverse_scene_compressed \
+  huggingface-cli download billzhao1030/all_scene \
     --repo-type dataset \
     --local-dir /cpfs/shared/simulation/wangliuyi/vlnverse_scene \
-    --resume-download
+    --resume-download \
+    --include kujiale_0157.tar
+
   
   if [ $? -eq 0 ]; then
     echo "下载成功完成！"

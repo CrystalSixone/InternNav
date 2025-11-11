@@ -9,14 +9,10 @@ from internnav.configs.evaluator import (
 
 eval_cfg = EvalCfg(
     agent=AgentCfg(
-        server_port=8080,
-        model_name='rdp',
-        ckpt_path='checkpoints/r2r/fine_tuned/rdp/checkpoint-104150',
-        model_settings={
-            # debug
-            'vis_debug': True,  # If vis_debug=True, you can get visualization results
-            'vis_debug_path': './logs/rdp/vis_debug',
-        },
+        server_port=8087,
+        model_name='cma_clip',
+        ckpt_path='checkpoints/20251109_vlnverse_cma_clip/ckpts/checkpoint-610240',
+        model_settings={},
     ),
     env=EnvCfg(
         env_type='vln_pe',
@@ -26,11 +22,13 @@ eval_cfg = EvalCfg(
         },
     ),
     task=TaskCfg(
-        task_name='rdp_eval',
+        task_name='20251111_cma_clip_flash_vlnverseCoarse_ckpt610240',
         task_settings={
-            'env_num': 2,
+            'env_num': 1,
             'use_distributed': False,
             'proc_num': 1,
+            'max_step': 500,
+            'warm_up_step': 500
         },
         scene=SceneCfg(
             scene_type='kujiale',
@@ -45,9 +43,10 @@ eval_cfg = EvalCfg(
     dataset=EvalDatasetCfg(
         dataset_type="kujiale",
         dataset_settings={
-            'base_data_dir': 'data/vln_pe/raw_data/vlnverse/mixed_splits',
-            # 'split_data_types': ['val_unseen', 'val_seen'],
-            'split_data_types': ['test_w61'],
+            # 'base_data_dir': 'data/vln_pe/raw_data/vlnverse/mixed_splits',
+            'base_data_dir': 'data/vln_pe/raw_data/vlnverse/final_splits_with_distance_formal/coarse',
+            'split_data_types': ['val_unseen', 'val_seen', 'test'],
+            # 'split_data_types': ['test_w61'],
             'filter_stairs': False,
         },
     ),

@@ -261,7 +261,13 @@ def load_scene_usd(mp3d_data_dir, scan):
 
 def load_kujiale_scene_usd(kujiale_iros_data_dir, scan):
     """Load scene USD based on the scan"""
-    scene_usd_path = os.path.join(kujiale_iros_data_dir, scan, f'{scan}.usda')
+    scene_usd_path = os.path.join(kujiale_iros_data_dir, scan, 'start_result_navigation.usd')
+    if not os.path.exists(scene_usd_path):
+        if 'kujiale' in scan and 'fix' in scan:
+            scan_no_fix = scan.replace('_fix','')
+            scene_usd_path = os.path.join(kujiale_iros_data_dir, scan, f'{scan_no_fix}.usda')
+        else:
+            scene_usd_path = os.path.join(kujiale_iros_data_dir, scan, f'{scan}.usda')
     if not os.path.exists(scene_usd_path):
         log.error('Scene USD not found for scan %s', scan)
         return None

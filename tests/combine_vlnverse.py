@@ -2,8 +2,8 @@ import gzip
 import json
 import os
 
-vlnverse_original_dir = 'data/vln_pe/raw_data/vlnverse/final_splits'
-new_dir = 'data/vln_pe/raw_data/vlnverse/mixed_splits'
+vlnverse_original_dir = 'data/vln_pe/raw_data/vlnverse/final_splits_with_distance_formal'
+new_dir = 'data/vln_pe/raw_data/vlnverse/final_splits_with_distance_formal/total'
 
 splits = ['train', 'val_seen', 'val_unseen', 'test']
 types = ['coarse', 'fine']
@@ -11,7 +11,7 @@ types = ['coarse', 'fine']
 # 映射 split 名称到文件名
 split_to_filename = {
     'train': 'train',
-    'val_seen': 'val',  # val_seen 对应 val.json.gz
+    'val_seen': 'val_seen',  # val_seen 对应 val.json.gz
     'val_unseen': 'val_unseen',
     'test': 'test',
 }
@@ -49,8 +49,8 @@ def process_split(split):
     """处理单个 split，合并 coarse 和 fine 数据"""
     filename = split_to_filename[split]
 
-    coarse_file = os.path.join(vlnverse_original_dir, f'coarse_{filename}.json.gz')
-    fine_file = os.path.join(vlnverse_original_dir, f'fine_{filename}.json.gz')
+    coarse_file = os.path.join(vlnverse_original_dir,'coarse', f'{split}', f'{filename}.json.gz')
+    fine_file = os.path.join(vlnverse_original_dir,'fine', f'{split}', f'{filename}.json.gz')
 
     # 检查文件是否存在
     if not os.path.exists(coarse_file):

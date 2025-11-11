@@ -4,6 +4,7 @@ from pathlib import Path
 from time import time
 
 import numpy as np
+import copy
 
 from internnav.configs.evaluator import EvalCfg
 from internnav.evaluator.base import Evaluator
@@ -13,7 +14,7 @@ from internnav.evaluator.utils.data_collector import DataCollector
 from internnav.evaluator.utils.dataset import ResultLogger, split_data
 from internnav.evaluator.utils.eval import generate_episode
 from internnav.projects.dataloader.resumable import ResumablePathKeyDataloader
-from internnav.utils import common_log_util, progress_log_multi_util
+from internnav.utils import common_log_util, progress_log_multi_util, episode_metric_log_util
 from internnav.utils.common_log_util import common_logger as log
 
 
@@ -59,6 +60,7 @@ class VlnMultiEvaluator(Evaluator):
         self.dataloader = ResumablePathKeyDataloader(config.dataset.dataset_type, **config.dataset.dataset_settings)
         self.dataset_name = Path(config.dataset.dataset_settings['base_data_dir']).name
         progress_log_multi_util.init(self.task_name, self.dataloader.size)
+        episode_metric_log_util.init(self.dataset_name)
         self.total_path_num = self.dataloader.size
         progress_log_multi_util.progress_logger_multi.info(
             f'start eval dataset: {self.task_name}, total_path:{self.dataloader.size}'  # noqa: E501
@@ -205,16 +207,24 @@ class VlnMultiEvaluator(Evaluator):
                 if not __debug__:
                     pass
                 log.info(json.dumps(obs['metrics']))
+                episode_id = self.now_path_key(reset_info)
+                metric_info = obs['metrics'][list(obs['metrics'].keys())[0]][0]
+                
+                # 记录episode的详细metric信息到JSON文件
+                metric_info_for_log = copy.deepcopy(metric_info)
+                metric_info_for_log.pop('reference_path')
+                episode_metric_log_util.log_episode_metric(episode_id, metric_info_for_log)
+                
                 self.data_collector.save_eval_result(
-                    key=self.now_path_key(reset_info),
-                    result=obs['metrics'][list(obs['metrics'].keys())[0]][0]['fail_reason'],
-                    info=obs['metrics'][list(obs['metrics'].keys())[0]][0],
+                    key=episode_id,
+                    result=metric_info['fail_reason'],
+                    info=metric_info,
                 )  # save data to dataset
                 # log data
                 progress_log_multi_util.trace_end(
-                    trajectory_id=self.now_path_key(reset_info),
-                    step_count=obs['metrics'][list(obs['metrics'].keys())[0]][0]['steps'],
-                    result=obs['metrics'][list(obs['metrics'].keys())[0]][0]['fail_reason'],
+                    trajectory_id=episode_id,
+                    step_count=metric_info['steps'],
+                    result=metric_info['fail_reason'],
                 )
                 self.result_logger.write_now_result()
                 self.runner_status[env_id] = runner_status_code.NOT_RESET

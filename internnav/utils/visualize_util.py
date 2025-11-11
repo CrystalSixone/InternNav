@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -150,6 +151,10 @@ class VisualizeUtil:
         if assemble_video:
             self._save_video_fn(ti.frames_dir, ti.video_path, ti.fps)
             viz_logger.info(f"[video] saved {ti.video_path}")
+            # Delete frames folder after saving video
+            if os.path.exists(ti.frames_dir):
+                shutil.rmtree(ti.frames_dir)
+                viz_logger.info(f"[cleanup] deleted frames directory: {ti.frames_dir}")
 
         self._del_traj(trajectory_id)
 

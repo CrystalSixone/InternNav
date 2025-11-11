@@ -4,6 +4,7 @@ source /root/miniconda3/etc/profile.d/conda.sh
 conda activate internutopia
 
 # CONFIG=scripts/eval/configs/h1_internvla_n1_cfg.py
+export CUDA_VISIBLE_DEVICES=5
 CONFIG=scripts/eval/configs/h1_rdp_cfg.py
 
 while [[ $# -gt 0 ]]; do
@@ -30,19 +31,21 @@ mkdir -p logs
 SERVER_LOG="logs/${CONFIG_PREFIX}_server.log"
 EVAL_LOG="logs/${CONFIG_PREFIX}_eval.log"
 
-processes=$(ps -ef | grep 'internnav/agent/utils/server.py' | grep -v grep | awk '{print $2}')
+# Only kill server processes started with the SAME config, avoid killing others
+SERVER_PATTERN="internnav/agent/utils/server.py --config $CONFIG"
+processes=$(pgrep -f "$SERVER_PATTERN")
 if [ -n "$processes" ]; then
     for pid in $processes; do
-        kill -9 $pid
-        echo "kill: $pid"
+        kill -9 "$pid"
+        echo "kill server (same config): $pid"
     done
 fi
 python internnav/agent/utils/server.py --config $CONFIG > "$SERVER_LOG" 2>&1 &
 
 
-RETRY_LIMIT=5
+RETRY_LIMIT=9999
 MONITOR_INTERVAL=60
-DEADLOCK_THRESHOLD=$((5 * 60))
+DEADLOCK_THRESHOLD=$((10 * 60))
 
 START_COMMAND="python -u scripts/eval/eval.py --config $CONFIG"
 LOG_FILE="$EVAL_LOG"
@@ -51,6 +54,18 @@ pid=0
 
 retry_count=0
 
+log_and_exit() {
+    reason="$1"
+    code="${2:-1}"
+    {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $reason"
+        echo "retries: $retry_count/$RETRY_LIMIT"
+        if [ -n "$pid" ] && [ "$pid" -ne 0 ]; then
+            echo "last known child pid: $pid"
+        fi
+    } >> "$LOG_FILE" 2>&1
+    exit $code
+}
 
 start_process() {
     echo "Starting process..."
@@ -98,7 +113,7 @@ while true; do
             start_process
         else
             echo "Exceeded maximum retry attempts. Exiting."
-            exit 1
+            log_and_exit "Exceeded maximum retry attempts after process exit"
         fi
     else
         if ! check_log_update; then
@@ -109,7 +124,7 @@ while true; do
                 start_process
             else
                 echo "Exceeded maximum retry attempts. Exiting."
-                exit 1
+                log_and_exit "Exceeded maximum retry attempts due to log not updating"
             fi
         fi
     fi

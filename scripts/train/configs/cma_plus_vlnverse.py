@@ -1,13 +1,13 @@
-from internnav.configs.model.rdp import rdp_cfg
+from internnav.configs.model.cma_vlnverse import cma_cfg
 from internnav.configs.trainer.eval import EvalCfg
 from internnav.configs.trainer.exp import ExpCfg
 from internnav.configs.trainer.il import FilterFailure, IlCfg, Loss
 
-rdp_vlnverse_exp_cfg = ExpCfg(
-    name='rdp_train',
-    model_name='rdp',
+cma_plus_vlnverse_exp_cfg = ExpCfg(
+    name='cma_plus_train',
+    model_name='cma',
     torch_gpu_id=0,
-    torch_gpu_ids=[0, 1, 2, 3],
+    torch_gpu_ids=[0],
     output_dir='checkpoints/%s/ckpts',
     checkpoint_folder='checkpoints/%s/ckpts',
     tensorboard_dir='checkpoints/%s/tensorboard',
@@ -16,37 +16,33 @@ rdp_vlnverse_exp_cfg = ExpCfg(
     eval=EvalCfg(
         use_ckpt_config=False,
         save_results=True,
-        split=['val_unseen'],
+        split=['val_seen'],
+        ckpt_to_load='',
         max_steps=195,
-        action='discrete',
-        sample=True,
+        sample=False,
         success_distance=3.0,
-        rotation_threshold=1e-2,
-        num_sample=1,
         start_eval_epoch=-1,
-        stop_mode='stop_progress',
-        pm_threshold=0.90,
-        step_interval=80,
-        len_traj_act=2,
+        step_interval=50,
     ),
     il=IlCfg(
-        epochs=50,
+        epochs=55,
         save_interval_epochs=5,
         batch_size=2,
         lr=1e-4,
         num_workers=8,
-        weight_decay=1e-4,
-        warmup_ratio=0.1,
-        save_filter_frozen_weights=True,
+        weight_decay=1e-5,
+        warmup_ratio=0.05,
+        use_iw=True,
+        inflection_weight_coef=3.2,
+        save_filter_frozen_weights=False,
         load_from_ckpt=False,
-        ckpt_to_load='checkpoints/20251109_rdp_vlnverse_c1/ckpts/checkpoint-17163',
-        # dataset_r2r_root_dir='data/vln_pe/raw_data/vlnverse',
-        dataset_r2r_root_dir='data/vln_pe/raw_data/vlnverse/mixed_splits',
+        ckpt_to_load='checkpoints/r2r/fine_tuned/cma_plus',
+        lmdb_map_size=1e12,
+        dataset_r2r_root_dir='data/vln_pe/raw_data/vlnverse/final_splits_with_distance_formal/total',
         dataset_3dgs_root_dir='',
         dataset_grutopia10_root_dir='',
         lmdb_features_dir='vlnverse',
         lerobot_features_dir='data/vln_pe/traj_data/vlnverse',
-        # lerobot_features_dir='data/vln_pe/traj_data/kujiale',
         camera_name='pano_camera_0',
         report_to='wandb',  # wandb, tensorboard, none
         ddp_find_unused_parameters=True,
@@ -54,11 +50,10 @@ rdp_vlnverse_exp_cfg = ExpCfg(
             use=True,
             min_rgb_nums=15,
         ),
-        use_discrete_dataset=True,
         loss=Loss(
             alpha=0.0001,
             dist_scale=1,
         ),
     ),
-    model=rdp_cfg,
+    model=cma_cfg,
 )

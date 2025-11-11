@@ -593,7 +593,7 @@ class RDPNet(PreTrainedModel):
                 naction = naction.to(device)
                 timesteps = timesteps.to(device)
                 noise = torch.randn(naction.shape, device=device)
-                noisy_action = self.noise_scheduler.add_noise(naction, noise, timesteps)
+                noisy_action = self.noise_scheduler.add_noise(naction, noise, timesteps.cpu())
             else:
                 noisy_action = observations['actions']
 

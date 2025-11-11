@@ -10,7 +10,7 @@ from internnav.configs.evaluator import (
 
 eval_cfg = EvalCfg(
     agent=AgentCfg(
-        server_port=8023,
+        server_port=8024,
         model_name='internvla_n1',
         ckpt_path='',
         model_settings={
@@ -31,27 +31,30 @@ eval_cfg = EvalCfg(
             'predict_step_nums': 32,
             'continuous_traj': True,
             # debug
-            'vis_debug': True,  # If vis_debug=True, you can get visualization results
-            'vis_debug_path': './logs/test/vis_debug',
+            'vis_debug': False,  # If vis_debug=True, you can get visualization results
+            'vis_debug_path': './logs/20251111-internnav-N1-vlnverse-fine/vis_debug',
         },
     ),
     env=EnvCfg(
         env_type='vln_multi',
         env_settings={
             'use_fabric': False,  # Please set use_fabric=False due to the render delay;
-            'headless': False,
+            'headless': True,
         },
     ),
     task=TaskCfg(
-        task_name='test',
+        task_name='20251111-internnav-N1-vlnverse-fine',
         task_settings={
             'env_num': 1,
             'use_distributed': False,  # If the others setting in task_settings, please set use_distributed = False.
             'proc_num': 1,
+            'max_step': 500,
+            'warm_up_step': 500
         },
         scene=SceneCfg(
-            scene_type='mp3d',
-            scene_data_dir='data/scene_data/mp3d_pe',
+            scene_type='kujiale',
+            scene_data_dir='data/scene_data/vlnverse',
+            # scene_data_dir='/root/vlnverse_scene',
         ),
         robot_name='h1',
         robot_flash=True,  # If robot_flash is True, the mode is flash (set world_pose directly); else you choose physical mode.
@@ -61,13 +64,14 @@ eval_cfg = EvalCfg(
         one_step_stand_still=True,  # For dual-system, please keep this param True.
     ),
     dataset=EvalDatasetCfg(
-        dataset_type="mp3d",
+        dataset_type="kujiale",
         dataset_settings={
-            'base_data_dir': 'data/vln_pe/raw_data/r2r',
-            'split_data_types': ['val_unseen'],  # 'val_seen'
+            # 'base_data_dir': 'data/vln_pe/raw_data/vlnverse/mixed_splits',
+            # 'split_data_types': ['test_w61'],  # 'val_seen'
+            "base_data_dir": "data/vln_pe/raw_data/vlnverse/final_splits_with_distance_formal/fine",
+            "split_data_types": ["val_seen","val_unseen","test"],
             'filter_stairs': False,
             # 'selected_scans': ['zsNo4HB9uLZ'],
-            # 'selected_scans': ['8194nk5LbLH', 'pLe4wQe7qrG'],
         },
     ),
 )
