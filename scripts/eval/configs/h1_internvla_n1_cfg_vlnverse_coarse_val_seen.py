@@ -31,7 +31,7 @@ eval_cfg = EvalCfg(
             'predict_step_nums': 32,
             'continuous_traj': True,
             # debug
-            'vis_debug': True,  # If vis_debug=True, you can get visualization results
+            'vis_debug': False,  # If vis_debug=True, you can get visualization results
             'vis_debug_path': './logs/20251111-internnav-N1-vlnverse-coarse/vis_debug',
         },
     ),
@@ -43,12 +43,12 @@ eval_cfg = EvalCfg(
         },
     ),
     task=TaskCfg(
-        task_name='20251111-internnav-N1-vlnverse-coarse-formal',
+        task_name='20251112-internnav-N1-vlnverse-coarse-val-seen',
         task_settings={
             'env_num': 1,
             'use_distributed': False,  # If the others setting in task_settings, please set use_distributed = False.
             'proc_num': 1,
-            'max_step': 300,
+            'max_step': 500,
             'warm_up_step': 500
         },
         scene=SceneCfg(
@@ -69,7 +69,7 @@ eval_cfg = EvalCfg(
             # 'base_data_dir': 'data/vln_pe/raw_data/vlnverse/mixed_splits',
             # 'split_data_types': ['test_w61'],  # 'val_seen'
             "base_data_dir": "data/vln_pe/raw_data/vlnverse/final_splits_with_distance_formal/coarse",
-            "split_data_types": ["val_seen","val_unseen","test"],
+            "split_data_types": ["val_seen"],
             'filter_stairs': False,
             # 'selected_scans': ['zsNo4HB9uLZ'],
         },

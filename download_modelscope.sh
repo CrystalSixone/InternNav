@@ -1,0 +1,1 @@
+modelscope download --dataset skcaesar/LVLN  --local_dir /cpfs/user/wangliuyi/code/LVLN_dataset

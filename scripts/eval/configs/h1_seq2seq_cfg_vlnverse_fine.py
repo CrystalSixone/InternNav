@@ -22,7 +22,7 @@ eval_cfg = EvalCfg(
         },
     ),
     task=TaskCfg(
-        task_name='20251111_seq2seq_flash_vlnverseCoarse_610240',
+        task_name='20251111_seq2seq_flash_vlnverseFine_610240',
         task_settings={
             'env_num': 1,
             'use_distributed': False,
@@ -44,7 +44,7 @@ eval_cfg = EvalCfg(
         dataset_type="kujiale",
         dataset_settings={
             # 'base_data_dir': 'data/vln_pe/raw_data/vlnverse/mixed_splits',
-            'base_data_dir': 'data/vln_pe/raw_data/vlnverse/final_splits_with_distance_formal/coarse',
+            'base_data_dir': 'data/vln_pe/raw_data/vlnverse/final_splits_with_distance_formal/fine',
             'split_data_types': ['val_unseen', 'val_seen', 'test'],
             # 'split_data_types': ['test_w61'],
             'filter_stairs': False,

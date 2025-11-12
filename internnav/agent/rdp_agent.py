@@ -329,6 +329,10 @@ class RdpAgent(Agent):
                     stop_progress_pred,
                 ) = self.policy(batch)
 
+            for tmp_action in actions:
+                if tmp_action[0] == 0:
+                    print(1)
+
             self.step_ += 1
             self.steps += 1
             self.action_cache = list(map(lambda a: a[: self._model_settings.len_traj_act], actions))

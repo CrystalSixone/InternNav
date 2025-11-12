@@ -4,7 +4,7 @@ source /root/miniconda3/etc/profile.d/conda.sh
 conda activate internutopia
 
 # CONFIG=scripts/eval/configs/h1_internvla_n1_cfg.py
-export CUDA_VISIBLE_DEVICES=0,1
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 CONFIG=scripts/eval/configs/h1_rdp_cfg.py
 
 while [[ $# -gt 0 ]]; do
@@ -69,24 +69,7 @@ log_and_exit() {
 
 start_process() {
     echo "Starting process..."
-    
-    # Kill and restart server.py
-    SERVER_PATTERN="internnav/agent/utils/server.py --config $CONFIG"
-    processes=$(pgrep -f "$SERVER_PATTERN")
-    if [ -n "$processes" ]; then
-        for pid_to_kill in $processes; do
-            kill -9 "$pid_to_kill" 2>/dev/null
-            echo "Killed server process: $pid_to_kill"
-        done
-    fi
-    wait 2>/dev/null  # Wait for background jobs to finish and suppress messages
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Restarting server.py..." >> "$SERVER_LOG"
-    python internnav/agent/utils/server.py --config $CONFIG >> "$SERVER_LOG" 2>&1 &
-    echo "Restarted server.py"
-    
-    # Start the main command
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting eval process (retry: $retry_count)..." >> "$LOG_FILE"
-    $START_COMMAND >> "$LOG_FILE" 2>&1 &
+    $START_COMMAND > "$LOG_FILE" 2>&1 &
     pid=$!
 }
 
