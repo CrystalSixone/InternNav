@@ -34,14 +34,12 @@ from scripts.train.configs import (
     cma_clip_exp_cfg,
     cma_exp_cfg,
     cma_plus_exp_cfg,
-    cma_plus_vlnverse_exp_cfg,
     navdp_exp_cfg,
     rdp_exp_cfg,
     rdp_vlnverse_exp_cfg,
     seq2seq_clip_exp_cfg,
     seq2seq_exp_cfg,
     seq2seq_plus_exp_cfg,
-    seq2seq_plus_vlnverse_exp_cfg
 )
 
 
@@ -317,9 +315,6 @@ if __name__ == '__main__':
         'rdp_vlnverse': [rdp_vlnverse_exp_cfg, RDPNet, RDPModelConfig],
         'cma_clip': [cma_clip_exp_cfg, CMANet, CMAModelConfig],
         'seq2seq_clip': [seq2seq_clip_exp_cfg, Seq2SeqNet, Seq2SeqModelConfig],
-        'cma_plus_vlnverse': [cma_plus_vlnverse_exp_cfg, CMANet, CMAModelConfig],
-        'seq2seq_plus_vlnverse': [seq2seq_plus_vlnverse_exp_cfg, Seq2SeqNet, Seq2SeqModelConfig],
-        
     }
 
     if config.model_name not in supported_cfg:
