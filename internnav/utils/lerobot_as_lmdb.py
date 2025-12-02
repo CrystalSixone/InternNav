@@ -22,8 +22,16 @@ class LerobotAsLmdb:
         return keys
     
     def get_data_by_key(self, key):
-        scan = key.split('_')[0]
-        trajectory = key.split('_')[1]
+        splits = key.split('_')
+        if len(splits) == 2:
+            scan = key.split('_')[0]
+            trajectory = key.split('_')[1]
+        elif len(splits) == 3:
+            # gru-vln10
+            scan = splits[0]+'_'+splits[1]
+            trajectory = splits[2]
+        else:
+            raise ValueError(f"Invalid key: {key}")
         trajectory_path = os.path.join(self.dataset_path, scan, trajectory)
         parquet_path = os.path.join(trajectory_path, "data/chunk-000/episode_000000.parquet")
         json_path = os.path.join(trajectory_path, "meta/episodes.jsonl")

@@ -35,6 +35,7 @@ class TrainCfg(BaseModel):
 
     name: str = 'cma_train'  # Experiment name
     model_name: str = 'cma'  # Model name, options: 'cma', 'cma_plus', 'seq2seq', 'seq2seq_plus', 'rdp', 'navdp'
+    config: str | None = None  # Path to custom config file (optional)
 
 
 class CheckpointFormatCallback(TrainerCallback):
@@ -181,9 +182,9 @@ def main(config, model_class, model_config_class):
             if '3dgs' in config.il.lmdb_features_dir or '3dgs' in config.il.lmdb_features_dir:
                 dataset_root_dir = config.il.dataset_six_floor_root_dir
                 dataset_type = '3dgs'
-            elif 'grutopia' in config.il.lmdb_features_dir:
+            elif 'kujiale' in config.il.lmdb_features_dir:
                 dataset_root_dir = config.il.dataset_grutopia10_root_dir
-                dataset_type = 'grutopia'
+                dataset_type = 'kujiale'
             else:
                 dataset_root_dir = config.il.dataset_r2r_root_dir
                 dataset_type = 'r2r'
@@ -304,6 +305,33 @@ if __name__ == '__main__':
         raise ValueError(f'Invalid model name: {config.model_name}. Supported models are: {list(supported_cfg.keys())}')
 
     exp_cfg, policy_name = supported_cfg[config.model_name]
+    
+    # Load custom config if provided
+    if config.config is not None:
+        config_path = Path(config.config)
+        if not config_path.exists():
+            raise FileNotFoundError(f'Config file not found: {config.config}')
+        
+        print(f'\n[INFO] Loading custom config from: {config.config}')
+        
+        # Import the config module
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("custom_config", config_path)
+        custom_config_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(custom_config_module)
+        
+        # Try to find the config object in the module
+        # Look for variables that match the model name pattern
+        config_var_name = f"{config.model_name}_exp_cfg"
+        if hasattr(custom_config_module, config_var_name):
+            exp_cfg = getattr(custom_config_module, config_var_name)
+            print(f'[INFO] Loaded config: {config_var_name}')
+        elif hasattr(custom_config_module, 'exp_cfg'):
+            exp_cfg = custom_config_module.exp_cfg
+            print('[INFO] Loaded config: exp_cfg')
+        else:
+            raise ValueError(f'Config file must contain either "{config_var_name}" or "exp_cfg" variable')
+    
     model_class, model_config_class = get_policy(policy_name), get_config(policy_name)
 
     exp_cfg.name = config.name

@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Default values
-NAME=rdp_train
+NAME=20251202_rdp_gruvln10_train
 MODEL=rdp
+CONFIG=""
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -13,6 +14,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --model)
             MODEL="$2"
+            shift 2
+            ;;
+        --config)
+            CONFIG="$2"
             shift 2
             ;;
         *)
@@ -65,6 +70,13 @@ export TORCH_SHOW_CPP_STACKTRACES=1
 export TORCH_CPP_LOG_LEVEL=INFO
 export NCCL_DEBUG=INFO
 
+# Prepare additional arguments
+EXTRA_ARGS=""
+if [[ -n "$CONFIG" ]]; then
+    EXTRA_ARGS="--config $CONFIG"
+    echo "Using config file: $CONFIG"
+fi
+
 # Check if model is rdp to use python, otherwise use torchrun
 if [[ "$MODEL" == "navdp" ]]; then
     echo "Using torchrun to start $MODEL training, using $NUM_GPUS GPUs (CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES)"
@@ -77,10 +89,13 @@ if [[ "$MODEL" == "navdp" ]]; then
         --master_port=12345 \
         scripts/train/train.py \
         --name "$NAME" \
-        --model-name "$MODEL"
+        --model-name "$MODEL" \
+        $EXTRA_ARGS
 else
     echo "Using python to start $MODEL training, using $NUM_GPUS GPUs (CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES)"
+    export PROJECT_ROOT_PATH=$(pwd)
     python scripts/train/train.py \
         --name "$NAME" \
-        --model-name "$MODEL"
+        --model-name "$MODEL" \
+        $EXTRA_ARGS
 fi

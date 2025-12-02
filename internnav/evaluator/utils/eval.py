@@ -36,6 +36,9 @@ def generate_episode(dataloader: ResumablePathKeyDataloader, config: EvalCfg):
         if config.task.scene.scene_type == 'kujiale':
             load_scene_func = load_kujiale_scene_usd
             scene_scale = (1, 1, 1)
+        elif config.task.scene.scene_type == 'grscene':
+            load_scene_func = load_scene_usd
+            scene_scale = (0.01, 0.01, 0.01)
         else:
             load_scene_func = load_scene_usd
             scene_scale = (1, 1, 1)
