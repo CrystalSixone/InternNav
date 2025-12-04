@@ -22,11 +22,11 @@ eval_cfg = EvalCfg(
         },
     ),
     task=TaskCfg(
-        task_name='20251202_rdp_epoch50_gruvln10_original_eval',
+        task_name='20251204_rdp_epoch50_gruvln10_original_eval_lightDebug',
         task_settings={
-            'env_num': 1,
+            'env_num': 2,
             'use_distributed': False,
-            'proc_num': 1,
+            'proc_num': 2,
         },
         scene=SceneCfg(
             scene_type='grscene_original',

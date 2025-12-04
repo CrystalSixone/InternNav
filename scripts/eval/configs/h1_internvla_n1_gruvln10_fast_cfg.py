@@ -9,7 +9,7 @@ from internnav.configs.evaluator import (
 
 eval_cfg = EvalCfg(
     agent=AgentCfg(
-        server_port=8078,
+        server_port=8079,
         model_name='internvla_n1',
         ckpt_path='',
         model_settings={
@@ -43,15 +43,15 @@ eval_cfg = EvalCfg(
         },
     ),
     task=TaskCfg(
-        task_name='20251202_n1_gruvln10_original_eval',
+        task_name='20251202_n1_gruvln10_eval',
         task_settings={
             'env_num': 1,
             'use_distributed': False,  # If the others setting in task_settings, please set use_distributed = False.
             'proc_num': 1,
         },
         scene=SceneCfg(
-            scene_type='grscene_original',
-            scene_data_dir='data/scene_data/grutopia10_original',
+            scene_type='grscene',
+            scene_data_dir='data/scene_data/grutopia10',
         ),
         robot_name='h1',
         robot_flash=False,  # If robot_flash is True, the mode is flash (set world_pose directly); else you choose physical mode.

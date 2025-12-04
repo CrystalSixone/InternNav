@@ -34,6 +34,13 @@ def load_kujiale_scene_usd(kujiale_iros_data_dir, scan):
         return None
     return scene_usd_path
 
+def load_grscene_scene_usd(kujiale_iros_data_dir, scan):
+    """Load scene USD based on the scan"""
+    scene_usd_path = os.path.join(kujiale_iros_data_dir, scan, f'{scan}.usd')
+    if not os.path.exists(scene_usd_path):
+        log.error('Scene USD not found for scan %s', scan)
+        return None
+    return scene_usd_path
 
 def generate_vln_episode(dataloader: ResumablePathKeyEpisodeloader, task: TaskCfg):
     scene_data_dir = task.scene.scene_data_dir
@@ -68,8 +75,11 @@ def generate_vln_episode(dataloader: ResumablePathKeyEpisodeloader, task: TaskCf
         if task.scene.scene_type == 'kujiale':
             load_scene_func = load_kujiale_scene_usd
             scene_scale = (1, 1, 1)
-        elif config.task.scene.scene_type == 'grscene':
+        elif task.scene.scene_type == 'grscene':
             load_scene_func = load_scene_usd
+            scene_scale = (0.01, 0.01, 0.01)
+        elif task.scene.scene_type == 'grscene_original':
+            load_scene_func = load_grscene_scene_usd
             scene_scale = (0.01, 0.01, 0.01)
         else:
             load_scene_func = load_scene_usd
@@ -105,6 +115,7 @@ def generate_vln_episode(dataloader: ResumablePathKeyEpisodeloader, task: TaskCf
                     )
                 ],
                 data=data,
+                scene_type=task.scene.scene_type,
             )
         )
     return episodes

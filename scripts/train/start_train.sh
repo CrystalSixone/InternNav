@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Default values
-NAME=20251202_rdp_gruvln10_train
+NAME=20251202_rdp_gruvln10_train_epoch50
 MODEL=rdp
 CONFIG=""
 
