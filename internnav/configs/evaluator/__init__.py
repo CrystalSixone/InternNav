@@ -44,6 +44,7 @@ class TaskCfg(BaseModel):
     robot_name: Optional[str] = None
     robot: Optional[RobotCfg] = None
     robot_flash: Optional[bool] = None
+    flash_collision: Optional[bool] = None
     robot_usd_path: Optional[str] = None
     camera_resolution: Optional[List[int]] = None
     metric: Optional[MetricCfg] = None

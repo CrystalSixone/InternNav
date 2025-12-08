@@ -14,7 +14,7 @@ from internnav.utils.common_log_util import common_logger as log
 
 
 def create_robot_mask(topdown_global_map_camera, mask_size=20):
-    height, width = topdown_global_map_camera._camera._resolution
+    height, width = topdown_global_map_camera.resolution
     center_x, center_y = width // 2, height // 2
     # Calculate the top-left and bottom-right coordinates
     half_size = mask_size // 2

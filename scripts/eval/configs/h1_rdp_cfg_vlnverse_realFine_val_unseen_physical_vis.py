@@ -31,7 +31,6 @@ eval_cfg = EvalCfg(
             'env_num': 1,
             'use_distributed': False,
             'proc_num': 1,
-            'max_step': 500
         },
         scene=SceneCfg(
             scene_type='kujiale_no_light', # kujiale
