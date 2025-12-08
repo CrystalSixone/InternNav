@@ -79,7 +79,8 @@ class VLNEvalTask(BaseTask):
     def load(self):
         super().load()
         self.robot_name = list(self.robots.keys())[0]
-        self.create_light()
+        if self.config.scene_type not in ['grscene', 'grscene_original', 'kujiale_no_light']:
+            self.create_light()
         self.done_checker = DoneChecker(
             self.env_offset,
             self.robots[list(self.robots.keys())[0]],
@@ -90,7 +91,8 @@ class VLNEvalTask(BaseTask):
         self.steps = 0
         for robot in self.robots.values():
             robot.post_reset()
-        self.reset_light_position(self.data['start_position'])
+        if self.config.scene_type not in ['grscene', 'grscene_original', 'kujiale_no_light']:
+            self.reset_light_position(self.data['start_position'])
         self.robot = self.robots[list(self.robots.keys())[0]]
         self.articulation = self.robot.articulation
 

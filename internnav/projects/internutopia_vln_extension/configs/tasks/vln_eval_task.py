@@ -15,3 +15,4 @@ class VLNEvalTaskCfg(TaskCfg):
     data: Dict
     robot_flash: Optional[bool] = False
     one_step_stand_still: Optional[bool] = False
+    scene_type: Optional[str] = None

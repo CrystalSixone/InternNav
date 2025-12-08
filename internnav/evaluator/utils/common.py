@@ -592,7 +592,7 @@ def crop(array):
     return array[start_y : start_y + 256, start_x : start_x + 256, :]
 
 
-def obs_to_image(obs_lst, action, output_path: str, reference_path, normalize: bool = True):
+def obs_to_image(obs_lst, action, output_path: str, reference_path, normalize: bool = True, instruction: str = None):
     """
     Load .npy file and save as image
 
@@ -600,6 +600,7 @@ def obs_to_image(obs_lst, action, output_path: str, reference_path, normalize: b
         npy_path: Path to input .npy file
         output_path: Output image path (extension determines format)
         normalize: Scale values to 0-255 if True
+        instruction: Optional instruction text to display at the bottom of the image
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
@@ -615,7 +616,11 @@ def obs_to_image(obs_lst, action, output_path: str, reference_path, normalize: b
     # draw trajectory on depth
     topdown_array = crop(draw_trajectory(topdown_array, obs_lst, reference_path))
 
-    # Combine horizontally (256x256 + 256x256 = 512x256)
+    # Resize topdown_array to match rgb_array's shape
+    h, w = rgb_array.shape[:2]
+    topdown_array = np.array(Image.fromarray(topdown_array).resize((w, h), Image.BILINEAR))
+
+    # Combine horizontally
     array = np.concatenate((rgb_array, topdown_array), axis=1)
 
     # Handle different array types
@@ -630,6 +635,11 @@ def obs_to_image(obs_lst, action, output_path: str, reference_path, normalize: b
     # Upscaling using interpolation, improve resolution
     array = cv2.resize(array, (array.shape[1] * 2, array.shape[0] * 2), interpolation=cv2.INTER_CUBIC)
 
+    # Add instruction text at the bottom if provided
+    if instruction:
+        instruction  = 'Instruction: ' + instruction
+        array = add_instruction_to_image(array, instruction, font_size=40)
+
     # Create and save image
     if array.ndim == 2:  # Grayscale
         Image.fromarray(array).save(output_path)
@@ -639,6 +649,80 @@ def obs_to_image(obs_lst, action, output_path: str, reference_path, normalize: b
         raise ValueError(f"Unsupported array shape: {array.shape}")
 
     print(f"Saved to {output_path}")
+
+
+def add_instruction_to_image(array, instruction: str, font_size: int = 36, padding: int = 20, bg_color=(50, 50, 50), text_color=(255, 255, 255)):
+    """
+    Add instruction text at the bottom of an image.
+
+    Args:
+        array: Input image as numpy array (H, W, C)
+        instruction: Text to display
+        font_size: Font size for the text
+        padding: Padding around the text
+        bg_color: Background color for the text area (R, G, B)
+        text_color: Text color (R, G, B)
+
+    Returns:
+        New image array with instruction text at the bottom
+    """
+    img = Image.fromarray(array)
+    img_width, img_height = img.size
+
+    # Create a draw object to measure text size
+    draw = ImageDraw.Draw(img)
+
+    # Try to use a TrueType font, fall back to default if not available
+    try:
+        from PIL import ImageFont
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size)
+    except Exception:
+        font = None
+
+    # Wrap text to fit image width
+    max_text_width = img_width - 2 * padding
+    lines = []
+    words = instruction.split()
+    current_line = ""
+
+    for word in words:
+        test_line = current_line + " " + word if current_line else word
+        if font:
+            bbox = draw.textbbox((0, 0), test_line, font=font)
+            text_width = bbox[2] - bbox[0]
+        else:
+            text_width = len(test_line) * 8  # Approximate width for default font
+
+        if text_width <= max_text_width:
+            current_line = test_line
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+
+    if current_line:
+        lines.append(current_line)
+
+    # Calculate text area height
+    line_height = font_size + 5 if font else 15
+    text_area_height = len(lines) * line_height + 2 * padding
+
+    # Create new image with extra space at the bottom
+    new_height = img_height + text_area_height
+    new_img = Image.new('RGB', (img_width, new_height), bg_color)
+    new_img.paste(img, (0, 0))
+
+    # Draw the instruction text
+    draw = ImageDraw.Draw(new_img)
+    y_offset = img_height + padding
+    for line in lines:
+        if font:
+            draw.text((padding, y_offset), line, fill=text_color, font=font)
+        else:
+            draw.text((padding, y_offset), line, fill=text_color)
+        y_offset += line_height
+
+    return np.array(new_img)
 
 
 from glob import glob

@@ -48,6 +48,7 @@ class TaskCfg(BaseModel):
     camera_resolution: Optional[List[int]] = None
     metric: Optional[MetricCfg] = None
     camera_prim_path: Optional[str] = None
+    vis_output_resolution: Optional[List[int]] = None
 
 
 class EvalDatasetCfg(BaseModel):

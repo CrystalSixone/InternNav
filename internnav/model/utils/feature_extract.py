@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 
 import torch
-
+import torch.nn.functional as F
 # old
 # def extract_instruction_tokens(
 #     observations: List[Dict],
@@ -95,6 +95,22 @@ def extract_image_features(
     if stack_rgb is None and stack_depth is None:
         rgb = batch['rgb'].to(device)
         depth = batch['depth'].to(device)
+
+        '''for visualization with high quality image'''
+        if rgb.shape != (bs, 256, 256, 3):
+            # for save high quality image, we need to resize the image to 256x256
+            # F.interpolate requires (N, C, H, W) format and float type
+            rgb_dtype = rgb.dtype
+            rgb = rgb.permute(0, 3, 1, 2).float()
+            rgb = F.interpolate(rgb, size=(256, 256), mode='bilinear', align_corners=False)
+            rgb = rgb.permute(0, 2, 3, 1).to(rgb_dtype)
+        if depth.shape != (bs, 256, 256, 1):
+            # for save high quality image, we need to resize the image to 256x256
+            # F.interpolate requires (N, C, H, W) format and float type
+            depth_dtype = depth.dtype
+            depth = depth.permute(0, 3, 1, 2).float()
+            depth = F.interpolate(depth, size=(256, 256), mode='bilinear', align_corners=False)
+            depth = depth.permute(0, 2, 3, 1).to(depth_dtype)
 
         rgb_feat = net.image_encoder.process_image(rgb).float().to(device)
         if depth_encoder_type == 'resnet':

@@ -35,6 +35,7 @@ class TrajectoryVizInfo:
     result: Optional[str] = None
     saved_frames: List = None
     reference_path: List = None
+    instruction: Optional[str] = None
 
 
 class VisualizeUtil:
@@ -87,7 +88,7 @@ class VisualizeUtil:
         self._global_end: Optional[float] = None
         self._finished = 0
 
-    def trace_start(self, trajectory_id: str, reference_path):
+    def trace_start(self, trajectory_id: str, reference_path, instruction: Optional[str] = None):
         if self._global_start is None:
             self._global_start = time.time()
         traj_dir = os.path.join(self.base_dir, trajectory_id)
@@ -103,6 +104,7 @@ class VisualizeUtil:
             start_time=time.time(),
             saved_frames=[],
             reference_path=reference_path,
+            instruction=instruction,
         )
         viz_logger.info(f"[start] trajectory_id={trajectory_id}")
 
@@ -130,7 +132,7 @@ class VisualizeUtil:
         # zero-padded name for lexicographic order
         fname = filename or f"{step_index:06d}.{self.img_ext}"
         out_path = os.path.join(ti.frames_dir, fname)
-        self._save_frame_fn(ti.saved_frames, action, out_path, ti.reference_path)
+        self._save_frame_fn(ti.saved_frames, action, out_path, ti.reference_path, instruction=ti.instruction)
 
     def trace_end(self, trajectory_id: str, result: Optional[str] = None, assemble_video: bool = True):
         """

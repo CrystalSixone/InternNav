@@ -164,7 +164,10 @@ def get_config(evaluator_cfg: EvalCfg):
         move_by_speed_cfg["policy_weights_path"] = (
             os.path.dirname(robot_usd_path) + '/policy/move_by_speed/h1_loco_jit_policy.pt'
         )
-        camera_resolution = evaluator_cfg.task.camera_resolution
+        if hasattr(evaluator_cfg.task, 'vis_output_resolution'):
+            camera_resolution = evaluator_cfg.task.vis_output_resolution
+        else:
+            camera_resolution = evaluator_cfg.task.camera_resolution
         robot_offset = np.array([0.0, 0.0, 1.05])
         camera_prim_path = evaluator_cfg.task.camera_prim_path
         fall_height_threshold = 0.5

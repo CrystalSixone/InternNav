@@ -36,7 +36,7 @@ def generate_episode(dataloader: ResumablePathKeyDataloader, config: EvalCfg):
         data['path_key'] = path_key
         data['name'] = dataloader.task_name
 
-        if config.task.scene.scene_type == 'kujiale':
+        if config.task.scene.scene_type in ['kujiale', 'kujiale_no_light']:
             load_scene_func = load_kujiale_scene_usd
             scene_scale = (1, 1, 1)
         else:
@@ -75,6 +75,7 @@ def generate_episode(dataloader: ResumablePathKeyDataloader, config: EvalCfg):
                     )
                 ],
                 data=data,
+                scene_type=config.task.scene.scene_type,
             )
         )
     return episodes

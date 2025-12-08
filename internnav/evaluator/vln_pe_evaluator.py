@@ -245,7 +245,7 @@ class VlnPeEvaluator(Evaluator):
             )
             if self.vis_output:
                 self.visualize_util.trace_start(
-                    trajectory_id=self.now_path_key(reset_info), reference_path=reset_info.data['reference_path']
+                    trajectory_id=self.now_path_key(reset_info), reference_path=reset_info.data['reference_path'], instruction=reset_info.data['instruction']['instruction_text']
                 )
         return False, reset_infos
 
@@ -261,7 +261,7 @@ class VlnPeEvaluator(Evaluator):
             )
             if self.vis_output:
                 self.visualize_util.trace_start(
-                    trajectory_id=self.now_path_key(info), reference_path=info.data['reference_path']
+                    trajectory_id=self.now_path_key(info), reference_path=info.data['reference_path'], instruction=info.data['instruction']['instruction_text']
                 )
         log.info('start new episode!')
 
