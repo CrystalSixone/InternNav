@@ -341,7 +341,7 @@ def norm_depth(depth_info, min_depth=0, max_depth=10):
     return depth_info
 
 
-def draw_trajectory(array, obs_lst, reference_path):
+def draw_trajectory(array, obs_lst, reference_path, img_width=500, img_height=500):
     """
     Draw the globalgps path and orientation arrows onto the depth array.
     """
@@ -358,12 +358,12 @@ def draw_trajectory(array, obs_lst, reference_path):
 
     ref_points = []
     for position in reference_path:
-        px, py = world_to_pixel(position, camera_pose, 200, 500, 500)
+        px, py = world_to_pixel(position, camera_pose, 200, img_width, img_height)
         ref_points.append((py, px))
 
     for obs in obs_lst:
         position = obs["globalgps"]
-        px, py = world_to_pixel(position, camera_pose, 200, 500, 500)
+        px, py = world_to_pixel(position, camera_pose, 200, img_width, img_height)
         points.append((py, px))
 
     if "globalrotation" in obs_lst[-1]:
@@ -375,7 +375,7 @@ def draw_trajectory(array, obs_lst, reference_path):
         dx = arrow_length * np.cos(yaw)
         dy = arrow_length * np.sin(yaw)
         arrow_tip = (position[0] + dx, position[1] + dy)
-        px_tip, py_tip = world_to_pixel(arrow_tip, camera_pose, 200, 500, 500)
+        px_tip, py_tip = world_to_pixel(arrow_tip, camera_pose, 200, img_width, img_height)
         arrows.append(((py, px), (py_tip, px_tip)))
 
     # Now render the image and draw path + arrows
@@ -614,7 +614,7 @@ def obs_to_image(obs_lst, action, output_path: str, reference_path, normalize: b
     rgb_array = draw_action_pil(rgb_array, action)
 
     # draw trajectory on depth
-    topdown_array = crop(draw_trajectory(topdown_array, obs_lst, reference_path))
+    topdown_array = crop(draw_trajectory(topdown_array, obs_lst, reference_path, img_width=topdown_array.shape[1], img_height=topdown_array.shape[0]))
 
     # Resize topdown_array to match rgb_array's shape
     h, w = rgb_array.shape[:2]
@@ -638,7 +638,11 @@ def obs_to_image(obs_lst, action, output_path: str, reference_path, normalize: b
     # Add instruction text at the bottom if provided
     if instruction:
         instruction  = 'Instruction: ' + instruction
-        array = add_instruction_to_image(array, instruction, font_size=40)
+        # Dynamically adjust font size based on image width
+        base_width = 1500
+        base_font_size = 40
+        font_size = max(20, int(base_font_size * array.shape[1] / base_width))
+        array = add_instruction_to_image(array, instruction, font_size=font_size)
 
     # Create and save image
     if array.ndim == 2:  # Grayscale

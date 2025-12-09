@@ -75,12 +75,42 @@ class VLNEvalTask(BaseTask):
             )
         )
         self.down_disk_light_position.Set(Gf.Vec3f(new_position[0], new_position[1], new_position[2] + raise_light))
+    
+    def hide_ceilings(self):
+        # for vlnverse scene
+        from isaacsim.core.utils.stage import open_stage
+        from pxr import UsdGeom
+        import omni
+        
+        stage = omni.usd.get_context().get_stage()
+        for prim in stage.Traverse():
+            prim_path = str(prim.GetPath()).split("/")[-1]
+            if "ceiling" in prim_path and prim.IsA(UsdGeom.Xform):
+                print("prim_path", prim_path, prim)
+                if prim.IsA(UsdGeom.Xform):
+                    UsdGeom.Xform(prim).MakeInvisible()
+    
+    def create_domeLight(self):
+        # for vlnverse scene
+        from pxr import Gf, UsdGeom, UsdLux
+        import omni
+        
+        stage = omni.usd.get_context().get_stage()
+        stage.RemovePrim('/World/dome_light')
+        dome_light = UsdLux.DomeLight.Define(stage, '/World/dome_light')
+        dome_light.GetIntensityAttr().Set(500)
+        self.dome_light = dome_light
 
     def load(self):
         super().load()
         self.robot_name = list(self.robots.keys())[0]
         if self.config.scene_type not in ['grscene', 'grscene_original', 'kujiale_no_light']:
             self.create_light()
+        
+        if self.config.scene_type in ['kujiale', 'kujiale_no_light']:
+            self.hide_ceilings()
+            # self.create_domeLight()
+        
         self.done_checker = DoneChecker(
             self.env_offset,
             self.robots[list(self.robots.keys())[0]],

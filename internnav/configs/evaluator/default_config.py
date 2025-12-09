@@ -45,7 +45,7 @@ cfg = EvalCfg(
         env_settings={
             'physics_dt': 1 / 200,
             'rendering_dt': 1 / 200,
-            'rendering_interval': 5,
+            'rendering_interval': 1,
             'use_fabric': True,
             'headless': True,
         },
@@ -226,6 +226,7 @@ def get_config(evaluator_cfg: EvalCfg):
         robot.controllers.append(ControllerCfg(controller_settings=vln_move_by_flash_cfg.model_dump()))
 
     if evaluator_cfg.task.robot_flash or evaluator_cfg.eval_settings.get('vis_output', True):
+        topdown_resolution = evaluator_cfg.task.vis_output_resolution if evaluator_cfg.eval_settings.get('vis_output', True) else [500, 500]
         topdown_camera = SensorCfg(
             sensor_type='VLNCamera',
             sensor_name='topdown_camera_500',
@@ -233,7 +234,7 @@ def get_config(evaluator_cfg: EvalCfg):
                 name='topdown_camera_500',
                 prim_path='topdown_camera_500',
                 enable=True,
-                resolution=[500, 500],
+                resolution=topdown_resolution
             ).model_dump(),
         )
         robot.sensors.append(topdown_camera)

@@ -24,8 +24,12 @@ class VLNH1Robot(H1Robot):
         if 'topdown_camera_500' in self.sensors:
             orientation_quat = np.array([-0.70710678, 0.0, 0.0, 0.70710678])
             robot_pos = self.articulation.get_world_pose()[0]
+            # self.sensors['topdown_camera_500'].set_world_pose(
+            #     [robot_pos[0], robot_pos[1], robot_pos[2] + 0.75],
+            #     orientation_quat,
+            # )
             self.sensors['topdown_camera_500'].set_world_pose(
-                [robot_pos[0], robot_pos[1], robot_pos[2] + 0.75],
+                [robot_pos[0], robot_pos[1], robot_pos[2] + 1.5],
                 orientation_quat,
             )
 
