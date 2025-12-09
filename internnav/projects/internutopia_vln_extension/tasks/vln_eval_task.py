@@ -107,8 +107,8 @@ class VLNEvalTask(BaseTask):
         if self.config.scene_type not in ['grscene', 'grscene_original', 'kujiale_no_light']:
             self.create_light()
         
-        if self.config.scene_type in ['kujiale', 'kujiale_no_light']:
-            self.hide_ceilings()
+        # if self.config.scene_type in ['kujiale', 'kujiale_no_light']:
+        #     self.hide_ceilings()
             # self.create_domeLight()
         
         self.done_checker = DoneChecker(

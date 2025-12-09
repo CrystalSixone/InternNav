@@ -45,7 +45,7 @@ cfg = EvalCfg(
         env_settings={
             'physics_dt': 1 / 200,
             'rendering_dt': 1 / 200,
-            'rendering_interval': 1,
+            'rendering_interval': 5,
             'use_fabric': True,
             'headless': True,
         },
@@ -164,7 +164,7 @@ def get_config(evaluator_cfg: EvalCfg):
         move_by_speed_cfg["policy_weights_path"] = (
             os.path.dirname(robot_usd_path) + '/policy/move_by_speed/h1_loco_jit_policy.pt'
         )
-        if hasattr(evaluator_cfg.task, 'vis_output_resolution'):
+        if hasattr(evaluator_cfg.task, 'vis_output_resolution') and evaluator_cfg.task.vis_output_resolution is not None:
             camera_resolution = evaluator_cfg.task.vis_output_resolution
         else:
             camera_resolution = evaluator_cfg.task.camera_resolution
@@ -226,7 +226,11 @@ def get_config(evaluator_cfg: EvalCfg):
         robot.controllers.append(ControllerCfg(controller_settings=vln_move_by_flash_cfg.model_dump()))
 
     if evaluator_cfg.task.robot_flash or evaluator_cfg.eval_settings.get('vis_output', True):
-        topdown_resolution = evaluator_cfg.task.vis_output_resolution if evaluator_cfg.eval_settings.get('vis_output', True) else [500, 500]
+        if evaluator_cfg.eval_settings.get('vis_output', True) and evaluator_cfg.task.vis_output_resolution is not None:
+            topdown_resolution = evaluator_cfg.task.vis_output_resolution
+        else:
+            topdown_resolution = [500, 500]
+        
         topdown_camera = SensorCfg(
             sensor_type='VLNCamera',
             sensor_name='topdown_camera_500',

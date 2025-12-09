@@ -42,7 +42,7 @@ eval_cfg = EvalCfg(
         flash_collision=True,  # If flash_collision is True, the robot will stop when collision detected.
         robot_usd_path='data/Embodiments/vln-pe/h1/h1_vln_pointcloud_vlnverse.usd',
         camera_resolution=[256, 256],  # (W,H)
-        vis_output_resolution=[640, 480],
+        # vis_output_resolution=[640, 480],
         camera_prim_path='torso_link/h1_pano_camera_0',
     ),
     dataset=EvalDatasetCfg(
@@ -55,4 +55,8 @@ eval_cfg = EvalCfg(
             'filter_stairs': False,
         },
     ),
+    eval_settings={
+        'save_to_json': False, 
+        'vis_output': False,  # save result to video under logs/
+    }, 
 )
